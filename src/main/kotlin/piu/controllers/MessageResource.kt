@@ -29,6 +29,8 @@ class MessageResource {
 
     @Inject
     lateinit var ticketService: TicketService
+
+
     @GET
     @Path("/messages")
     @Produces(MediaType.APPLICATION_JSON)

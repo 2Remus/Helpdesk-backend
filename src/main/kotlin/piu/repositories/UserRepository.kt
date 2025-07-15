@@ -12,6 +12,10 @@ class UserRepository: PanacheRepository<SystemUser>  {
         return find("email",email).firstResult<SystemUser>()
     }
 
+    fun findByIssueType(type: String): SystemUser? {
+        return find("type",type).firstResult<SystemUser>()
+    }
+
     fun update(user : SystemUser): SystemUser{
         return entityManager.merge<SystemUser>(user)
     }

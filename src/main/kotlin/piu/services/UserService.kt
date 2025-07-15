@@ -3,6 +3,7 @@ package org.piu.services
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
 import jakarta.transaction.Transactional
+import org.piu.models.Message
 import org.piu.models.SystemUser
 import org.piu.repositories.UserRepository
 
@@ -41,6 +42,10 @@ class UserService {
 
     fun findByType(type: String): SystemUser?{
         return userRepository.find("isAdmin = true and issueType=?1",type).firstResult<SystemUser>()
+    }
+
+    fun save(user: SystemUser) {
+        userRepository.persist(user)
     }
 
 

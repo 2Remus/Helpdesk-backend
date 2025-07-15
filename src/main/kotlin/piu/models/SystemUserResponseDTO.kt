@@ -2,11 +2,9 @@ package piu.models
 
 data class SystemUserResponseDTO(
     val id: Long,
-    val name: String,
-    val email: String,
-    val role: String,
-    val institutionId: Long?
-
+    val email: String?,
+    val isAdmin: Boolean,
+    val issueType: String?
 )
 
 
