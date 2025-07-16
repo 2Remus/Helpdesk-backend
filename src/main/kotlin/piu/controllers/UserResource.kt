@@ -63,17 +63,7 @@ class UserResource {
            isAdmin = user.isAdmin
 
        )
-
-      /*  val responseDTO = MessageResponseDTO(
-            id = message.id!!,
-            content = message.content,
-            createdAt = message.createdAt,
-            ticketId = message.ticket?.id!!,
-            ticketSubject = message.ticket?.subject,
-            sender = message.sender
-        )*/
-
-        return Response.status(Response.Status.CREATED).entity(userResponseDTO).build()
+       return Response.status(Response.Status.CREATED).entity(userResponseDTO).build()
     }
 
 
