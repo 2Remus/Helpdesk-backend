@@ -14,6 +14,8 @@ val quarkusPlatformArtifactId: String by project
 val quarkusPlatformVersion: String by project
 
 dependencies {
+    implementation("io.quarkus:quarkus-resteasy-mutiny")
+    implementation("io.quarkus:quarkus-mailer")
     implementation("io.quarkus:quarkus-elytron-security")
     implementation(enforcedPlatform("${quarkusPlatformGroupId}:${quarkusPlatformArtifactId}:${quarkusPlatformVersion}"))
     implementation("io.quarkus:quarkus-hibernate-orm-rest-data-panache")
