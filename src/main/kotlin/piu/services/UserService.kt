@@ -3,7 +3,6 @@ package org.piu.services
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
 import jakarta.transaction.Transactional
-import org.piu.models.Message
 import org.piu.models.SystemUser
 import org.piu.repositories.UserRepository
 

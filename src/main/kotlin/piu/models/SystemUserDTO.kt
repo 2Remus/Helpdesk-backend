@@ -5,6 +5,7 @@ import kotlin.String
 
 data class SystemUserDTO(
     val id: Long,
+    val name: String,
     val email: String?,
     val password: String,
     val isAdmin: Boolean,
@@ -15,6 +16,7 @@ data class SystemUserDTO(
 fun SystemUser.toDTO(): SystemUserResponseDTO {
     return SystemUserResponseDTO(
         id = this.id!!,
+        name = this.name,
         email = this.email,
         isAdmin = this.isAdmin,
         issueType = this.issueType

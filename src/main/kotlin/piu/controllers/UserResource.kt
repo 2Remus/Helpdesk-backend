@@ -49,6 +49,7 @@ class UserResource {
 
         val user = SystemUser()
         user.email = dto.email
+        user.name = dto.name
         user.isAdmin = dto.isAdmin
         user.hashedPassword  = newBcrypt
         user.createdAt = LocalDateTime.now()
@@ -58,6 +59,7 @@ class UserResource {
         // Map to DTO before returning
        val userResponseDTO = SystemUserResponseDTO(
            id = user.id!!,
+           name = user.name,
            email = user.email,
            issueType = user.issueType,
            isAdmin = user.isAdmin
