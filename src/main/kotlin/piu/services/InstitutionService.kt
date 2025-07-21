@@ -20,15 +20,22 @@ class InstitutionService {
         institutionRepository.persist(institution)
         return institution
     }
-
+/*
     @Transactional
-    fun update(id: Long, updated: Institution): Institution? {
-        val existing = institutionRepository.findById(id) ?: return null
-        existing.name = updated.name
-        existing.address = updated.address
-        existing.email = updated.email
-        existing.phoneNumber = updated.phoneNumber
-        return existing
+
+    fun updateInstitution(id: Long?, institution: Institution){
+        institutionRepository.update(
+            "name = '${institution.name}', "+
+                    "email = '${institution.email}', "+
+                    "address = '${institution.address}' "+
+                    "phoneNumber = '${institution.phoneNumber}' "+
+                    "where id = $id"
+        )
+
+    }*/
+    @Transactional
+    fun updateInstitution(institution: Institution) {
+        institutionRepository.persist(institution)
     }
 
     @Transactional

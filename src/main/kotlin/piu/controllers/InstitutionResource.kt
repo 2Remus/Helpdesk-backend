@@ -1,6 +1,5 @@
 package piu.controllers
 
-import jakarta.annotation.security.RolesAllowed
 import jakarta.inject.Inject
 import jakarta.transaction.Transactional
 import jakarta.ws.rs.Consumes
@@ -13,13 +12,10 @@ import jakarta.ws.rs.PathParam
 import jakarta.ws.rs.Produces
 import jakarta.ws.rs.core.MediaType
 import jakarta.ws.rs.core.Response
-import org.piu.models.Ticket
-import org.piu.models.toDTO
 import piu.models.Institution
 import piu.models.InstitutionRequest
 import piu.models.toDTO
 import piu.services.InstitutionService
-import project.cardtp.models.TicketRequest
 import java.time.LocalDateTime
 
 @Path("/api")
@@ -31,6 +27,7 @@ class InstitutionResource {
     @Path("/institutions")
     fun getAll(): List<Institution> = institutionService.findAll()
 */
+    /*get institution list. functional 18-July-2025*/
     @GET
     @Path("/institutions")
     @Produces(MediaType.APPLICATION_JSON)
@@ -43,35 +40,20 @@ class InstitutionResource {
 
 
     @GET
-    @Path("/{id}")
+    @Path("/institutions/{id}")
     fun getById(@PathParam("id") id: Long): Response {
         val institution = institutionService.findById(id)
         return if (institution != null) Response.ok(institution).build()
         else Response.status(Response.Status.NOT_FOUND).build()
     }
-
-    @POST
-    fun create1(institution: Institution): Response {
-        val created = institutionService.create(institution)
-        return Response.status(Response.Status.CREATED).entity(created).build()
-    }
-
-    @POST
-    @Path("/institutions/create")
-    fun create(institution: Institution): Response {
-        val created = institutionService.create(institution)
-        return Response.status(Response.Status.CREATED).entity(created).build()
-    }
-
-
-
-    @PUT
+/*
+     @PUT
     @Path("/{id}")
     fun update(@PathParam("id") id: Long, institution: Institution): Response {
         val updated = institutionService.update(id, institution)
         return if (updated != null) Response.ok(updated).build()
         else Response.status(Response.Status.NOT_FOUND).build()
-    }
+    }*/
 
     @DELETE
     @Path("/{id}")
@@ -80,7 +62,7 @@ class InstitutionResource {
         else Response.status(Response.Status.NOT_FOUND).build()
     }
 
-
+    /*create new institution. functional 18-July-2025*/
     @POST
     @Path("/institutions/create")
     @Consumes(MediaType.APPLICATION_JSON)
@@ -100,5 +82,46 @@ class InstitutionResource {
         return Response.status(Response.Status.CREATED).build()
 
     }
+
+    @PUT
+    @Path("/institutions/edit/{id}")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @Transactional
+    fun updateInstitution(
+        @PathParam("id") id: Long,
+        request: InstitutionRequest
+    ): Response {
+        val institution = institutionService.findById(id)
+            ?: return Response.status(Response.Status.NOT_FOUND)
+                .entity("Institution with id $id not found").build()
+
+        institution.name = request.name
+        institution.address = request.address
+        institution.email = request.email
+        institution.phoneNumber = request.phoneNumber
+        institution.updatedAt = LocalDateTime.now()
+
+        institutionService.updateInstitution(institution)
+
+       // return Response.ok(institution).build()
+        return Response.status(Response.Status.OK).build()
+
+    }
+
+    @DELETE
+    @Path("/institutions/{instId}")
+    @Produces(MediaType.APPLICATION_JSON)
+    @Transactional
+    fun deleteInstitution(@PathParam("instId") instId: Long): Response {
+        val user = institutionService.findById(instId)
+            ?: return Response.status(Response.Status.NOT_FOUND).entity("Institution not found").build()
+
+        institutionService.delete(instId)
+
+        return Response.status(Response.Status.NO_CONTENT).build()
+    }
+
+
 
 }
