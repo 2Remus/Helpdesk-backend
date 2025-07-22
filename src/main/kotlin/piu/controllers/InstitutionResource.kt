@@ -46,14 +46,7 @@ class InstitutionResource {
         return if (institution != null) Response.ok(institution).build()
         else Response.status(Response.Status.NOT_FOUND).build()
     }
-/*
-     @PUT
-    @Path("/{id}")
-    fun update(@PathParam("id") id: Long, institution: Institution): Response {
-        val updated = institutionService.update(id, institution)
-        return if (updated != null) Response.ok(updated).build()
-        else Response.status(Response.Status.NOT_FOUND).build()
-    }*/
+
 
     @DELETE
     @Path("/{id}")
@@ -103,8 +96,6 @@ class InstitutionResource {
         institution.updatedAt = LocalDateTime.now()
 
         institutionService.updateInstitution(institution)
-
-       // return Response.ok(institution).build()
         return Response.status(Response.Status.OK).build()
 
     }

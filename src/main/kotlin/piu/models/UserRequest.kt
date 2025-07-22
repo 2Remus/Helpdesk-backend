@@ -1,3 +1,9 @@
 package piu.models
 
-data class UserRequest()
+data class UserRequest(
+    var name: String,
+    var email: String ,
+    var admin: Boolean,
+    var issueType: String
+
+)

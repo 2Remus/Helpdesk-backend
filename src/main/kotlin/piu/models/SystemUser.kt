@@ -28,14 +28,15 @@ data class SystemUser(
     var hashedPassword: String? = null,
 
     @Column(nullable = false)
-    var isAdmin: Boolean = false,
+    var admin: Boolean = false,
 
     @Column(nullable = true, length = 255)
     var issueType: String? = null,
 
     @Column(nullable = false)
     var createdAt: LocalDateTime = LocalDateTime.now(),
-
+    @Column(nullable = true)
+    var updatedAt: LocalDateTime? = null,
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "institution_id")
     var institution: Institution ?= null,

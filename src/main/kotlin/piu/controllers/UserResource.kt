@@ -7,6 +7,7 @@ import jakarta.ws.rs.Consumes
 import jakarta.ws.rs.DELETE
 import jakarta.ws.rs.GET
 import jakarta.ws.rs.POST
+import jakarta.ws.rs.PUT
 import jakarta.ws.rs.Path
 import jakarta.ws.rs.PathParam
 import jakarta.ws.rs.Produces
@@ -14,9 +15,10 @@ import jakarta.ws.rs.core.MediaType
 import jakarta.ws.rs.core.Response
 import org.piu.models.SystemUser
 import org.piu.services.UserService
-import piu.models.MessageResponseDTO
+import piu.models.InstitutionRequest
 import piu.models.SystemUserDTO
 import piu.models.SystemUserResponseDTO
+import piu.models.UserRequest
 import piu.models.toDTO
 import java.time.LocalDateTime
 
@@ -50,7 +52,7 @@ class UserResource {
         val user = SystemUser()
         user.email = dto.email
         user.name = dto.name
-        user.isAdmin = dto.isAdmin
+        user.admin = dto.admin
         user.hashedPassword  = newBcrypt
         user.createdAt = LocalDateTime.now()
         user.issueType = dto.issueType
@@ -62,7 +64,8 @@ class UserResource {
            name = user.name,
            email = user.email,
            issueType = user.issueType,
-           isAdmin = user.isAdmin
+           admin = user.admin,
+           institutionId = user.institution?.id
 
        )
        return Response.status(Response.Status.CREATED).entity(userResponseDTO).build()
@@ -80,6 +83,47 @@ class UserResource {
         userService.deleteUser(userId)
 
         return Response.status(Response.Status.NO_CONTENT).build()
+    }
+
+
+
+
+
+    @GET
+    @Path("/users/{usId}")
+    @Produces(MediaType.APPLICATION_JSON)
+    fun getById(@PathParam("usId") id: Long): Response {
+        val user = userService.findById(id)
+        return if (user != null) {
+            val dto = user.toDTO() // cleaner with extension function
+            Response.ok(dto).build()
+        } else {
+            Response.status(Response.Status.NOT_FOUND).build()
+        }
+    }
+
+    @PUT
+    @Path("/users/edit/{id}")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @Transactional
+    fun updateUser(
+        @PathParam("id") id: Long,
+        request: UserRequest
+    ): Response {
+        val user = userService.findById(id)
+            ?: return Response.status(Response.Status.NOT_FOUND)
+                .entity("User with id $id not found").build()
+
+        user.name = request.name
+        user.email = request.email
+        user.admin = request.admin
+        user.issueType = request.issueType
+        user.updatedAt = LocalDateTime.now()
+
+        userService.updateUser(user)
+        return Response.status(Response.Status.OK).build()
+
     }
 
 
