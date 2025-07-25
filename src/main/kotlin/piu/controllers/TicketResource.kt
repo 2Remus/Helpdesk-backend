@@ -25,8 +25,11 @@ class TicketResource {
     @Inject
     lateinit var userService: UserService
 
+
     @GET
     @Path("/tickets")
+    @RolesAllowed("admin" )
+    @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     @Transactional // Make sure the session is open while mapping
     fun findAll(): Response {
@@ -41,7 +44,7 @@ class TicketResource {
     @Path("/tickets/create")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    @RolesAllowed("user")
+    @RolesAllowed("admin","user")
     @Transactional
     fun saveTicket(request: TicketRequest): Response{
         //  val userId = jwt.getClaim<Long>("id")
