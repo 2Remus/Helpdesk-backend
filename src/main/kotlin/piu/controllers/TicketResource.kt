@@ -39,12 +39,11 @@ class TicketResource {
     }
 
 
-
     @POST
     @Path("/tickets/create")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    @RolesAllowed("user")
+    @RolesAllowed("admin","user")
     @Transactional
     fun saveTicket(request: TicketRequest): Response{
         //  val userId = jwt.getClaim<Long>("id")

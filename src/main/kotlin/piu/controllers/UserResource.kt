@@ -1,11 +1,13 @@
 package org.piu.controllers
 
 import io.quarkus.elytron.security.common.BcryptUtil
+import jakarta.annotation.security.RolesAllowed
 import jakarta.inject.Inject
 import jakarta.transaction.Transactional
 import jakarta.ws.rs.Consumes
 import jakarta.ws.rs.DELETE
 import jakarta.ws.rs.GET
+import jakarta.ws.rs.PATCH
 import jakarta.ws.rs.POST
 import jakarta.ws.rs.PUT
 import jakarta.ws.rs.Path
@@ -19,6 +21,7 @@ import piu.models.InstitutionRequest
 import piu.models.SystemUserDTO
 import piu.models.SystemUserResponseDTO
 import piu.models.UserRequest
+import piu.models.UserRoleRequest
 import piu.models.toDTO
 import java.time.LocalDateTime
 
@@ -38,6 +41,7 @@ class UserResource {
     }
 
     @POST
+    @RolesAllowed("admin" )
     @Path("/users/create")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
@@ -74,6 +78,7 @@ class UserResource {
 
     @DELETE
     @Path("/users/{userId}")
+    @RolesAllowed("user" )
     @Produces(MediaType.APPLICATION_JSON)
     @Transactional
     fun deleteUser(@PathParam("userId") userId: Long): Response {
@@ -91,6 +96,7 @@ class UserResource {
 
     @GET
     @Path("/users/{usId}")
+    @RolesAllowed("admin" )
     @Produces(MediaType.APPLICATION_JSON)
     fun getById(@PathParam("usId") id: Long): Response {
         val user = userService.findById(id)
@@ -104,6 +110,7 @@ class UserResource {
 
     @PUT
     @Path("/users/edit/{id}")
+    @RolesAllowed("admin" )
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     @Transactional
@@ -125,6 +132,32 @@ class UserResource {
         return Response.status(Response.Status.OK).build()
 
     }
+
+
+
+    @PUT
+    @Path("/users/edit/role/{id}")
+    @RolesAllowed("admin")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @Transactional
+    fun updateUserRole(
+        @PathParam("id") id: Long,
+        request: UserRoleRequest
+    ): Response {
+        val user = userService.findById(id)
+            ?: return Response.status(Response.Status.NOT_FOUND)
+                .entity("User with id $id not found").build()
+
+        user.admin = request.admin
+        user.issueType = request.issueType
+        user.updatedAt = LocalDateTime.now()
+
+        userService.save(user)
+
+        return Response.ok(mapOf("message" to "User updated successfully")).build()
+    }
+
 
 
 }
