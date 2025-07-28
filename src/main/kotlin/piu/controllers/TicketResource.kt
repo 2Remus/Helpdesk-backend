@@ -6,7 +6,9 @@ import jakarta.transaction.Transactional
 import jakarta.ws.rs.Consumes
 import jakarta.ws.rs.GET
 import jakarta.ws.rs.POST
+import jakarta.ws.rs.PUT
 import jakarta.ws.rs.Path
+import jakarta.ws.rs.PathParam
 import jakarta.ws.rs.Produces
 import jakarta.ws.rs.core.MediaType
 import jakarta.ws.rs.core.Response
@@ -14,6 +16,9 @@ import org.piu.models.Ticket
 import org.piu.models.toDTO
 import org.piu.services.TicketService
 import org.piu.services.UserService
+import piu.models.PriorityUpdateRequest
+import piu.models.StatusUpdateRequest
+import piu.models.UserRoleRequest
 import project.cardtp.models.TicketRequest
 import java.time.LocalDateTime
 
@@ -70,6 +75,51 @@ class TicketResource {
 
     }
 
+
+
+    @PUT
+    @Path("/tickets/status/{id}")
+    @RolesAllowed("admin")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @Transactional
+    fun updateTicketStatus(
+        @PathParam("id") id: Long,
+        status: StatusUpdateRequest
+    ): Response {
+        val ticket = ticketService.findById(id)
+            ?: return Response.status(Response.Status.NOT_FOUND)
+                .entity("ticket with id $id not found").build()
+
+        ticket.status = status.status
+        ticket.updatedAt = LocalDateTime.now()
+
+        ticketService.saveTicket(ticket)
+
+        return Response.ok(mapOf("message" to "Ticket updated successfully")).build()
+    }
+
+    @PUT
+    @Path("/tickets/priority/{id}")
+    @RolesAllowed("admin")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @Transactional
+    fun updateTicketPriority(
+        @PathParam("id") id: Long,
+        priority: PriorityUpdateRequest
+    ): Response {
+        val ticket = ticketService.findById(id)
+            ?: return Response.status(Response.Status.NOT_FOUND)
+                .entity("ticket with id $id not found").build()
+
+        ticket.priority = priority.priority
+        ticket.updatedAt = LocalDateTime.now()
+
+        ticketService.saveTicket(ticket)
+
+        return Response.ok(mapOf("message" to "Ticket updated successfully")).build()
+    }
 
 
 

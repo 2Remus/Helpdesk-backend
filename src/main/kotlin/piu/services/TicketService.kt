@@ -1,5 +1,6 @@
 package org.piu.services
 
+import io.quarkus.panache.common.Sort
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
 import jakarta.transaction.Transactional
@@ -20,12 +21,14 @@ class TicketService {
 
     }
     fun findAll(): List<Ticket>{
-        return ticketRepository.listAll()
+        return ticketRepository.listAll(Sort.ascending("createdAt"))
     }
 
     fun findByEmail(subject: String): Ticket?{
         return ticketRepository.findBySubject(subject)
     }
+
+
 
     fun saveTicket(ticket: Ticket){
         return ticketRepository.persist(ticket)
