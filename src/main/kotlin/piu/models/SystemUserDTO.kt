@@ -1,11 +1,10 @@
 package piu.models
 
-import com.fasterxml.jackson.annotation.JsonProperty
 import org.piu.models.SystemUser
 import kotlin.String
 
 data class SystemUserDTO(
-    val id: Long,
+    val id: Long?,
     val name: String,
     val email: String?,
     val password: String,

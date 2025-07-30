@@ -34,6 +34,8 @@ data class Ticket(
 
     @Column(nullable = false)
     var createdAt: LocalDateTime = LocalDateTime.now(),
+    @Column(nullable = true)
+    var updatedAt: LocalDateTime? = null,
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
