@@ -1,5 +1,6 @@
 package piu.controllers
 
+import jakarta.annotation.security.RolesAllowed
 import jakarta.inject.Inject
 import jakarta.transaction.Transactional
 import jakarta.ws.rs.Consumes
@@ -10,6 +11,7 @@ import jakarta.ws.rs.PathParam
 import jakarta.ws.rs.Produces
 import jakarta.ws.rs.core.MediaType
 import jakarta.ws.rs.core.Response
+import org.eclipse.microprofile.jwt.JsonWebToken
 import org.piu.models.Message
 import org.piu.models.toDTO
 import org.piu.services.MessageService
@@ -30,6 +32,8 @@ class MessageResource {
     @Inject
     lateinit var ticketService: TicketService
 
+    @Inject
+    lateinit var jwt: JsonWebToken
 
     @GET
     @Path("/messages")
@@ -66,26 +70,19 @@ class MessageResource {
 
     @GET
     @Path("/tickets/{ticketId}/messages")
+    @RolesAllowed("admin","user")
     @Produces(MediaType.APPLICATION_JSON)
     @Transactional
     fun findMessagesByTicketId(@PathParam("ticketId") ticketId: Long): Response {
         val messages = messageService.findByTicketId(ticketId)
-
-      /*  val dtoList = messages.map { message ->
-            MessageResponseDTO(
-                id = message.id!!,
-                content = message.content,
-                createdAt = message.createdAt,
-                ticketId = message.ticket?.id!!,
-                ticketSubject = message.ticket?.subject, // Load within session
-                senderEmail = message.sender // Load within session
-            )}*/
         val dtoList = messages.map { it.toDTO() }
         return Response.ok(dtoList).build()
     }
 
 
     @POST
+    @RolesAllowed("admin","user")
+
     @Path("/tickets/{ticketId}/message")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
@@ -97,12 +94,20 @@ class MessageResource {
         val ticket = ticketService.findById(ticketId)
             ?: return Response.status(Response.Status.NOT_FOUND).entity("Ticket not found").build()
 
-        val user = userService.findById(1) // Replace with authenticated user when ready
+        val userId = (jwt.getClaim<Any>("email") as? String)?.toString()
+        if (userId == null) {
+            return Response.status(Response.Status.UNAUTHORIZED)
+                .entity(mapOf("error" to "Invalid user token")).build()
+        }
+        val user = userService.findByEmail(userId)
+
+            ?: return Response.status(Response.Status.UNAUTHORIZED)
+                .entity(mapOf("error" to "User not found")).build()
 
         val message = Message()
         message.content = dto.content
         message.ticket = ticket
-        message.sender = user?.email
+        message.sender = user.email
         message.createdAt = LocalDateTime.now()
 
         messageService.save(message)

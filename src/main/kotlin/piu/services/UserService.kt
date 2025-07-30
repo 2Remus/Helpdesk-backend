@@ -1,5 +1,6 @@
 package org.piu.services
 
+import io.quarkus.panache.common.Parameters
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
 import jakarta.transaction.Transactional
@@ -26,13 +27,20 @@ class UserService {
     }
 
 
-    fun updateUser(systemUser: SystemUser){
+   /* fun updateUser(systemUser: SystemUser){
         userRepository.update(
             "email = '${systemUser.email}'"+
                     "where id = ${systemUser.id}"
         )
 
+    }*/
+    fun updateUser(systemUser: SystemUser) {
+        userRepository.update(
+            "email = :email where id = :id",
+            Parameters.with("email", systemUser.email).and("id", systemUser.id)
+        )
     }
+
 
     fun deleteUser(id: Long){
         userRepository.deleteById(id)
