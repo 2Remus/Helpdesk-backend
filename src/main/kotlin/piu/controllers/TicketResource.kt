@@ -12,13 +12,13 @@ import jakarta.ws.rs.PathParam
 import jakarta.ws.rs.Produces
 import jakarta.ws.rs.core.MediaType
 import jakarta.ws.rs.core.Response
+import org.eclipse.microprofile.jwt.JsonWebToken
 import org.piu.models.Ticket
 import org.piu.models.toDTO
 import org.piu.services.TicketService
 import org.piu.services.UserService
 import piu.models.PriorityUpdateRequest
 import piu.models.StatusUpdateRequest
-import piu.models.UserRoleRequest
 import project.cardtp.models.TicketRequest
 import java.time.LocalDateTime
 
@@ -29,7 +29,8 @@ class TicketResource {
 
     @Inject
     lateinit var userService: UserService
-
+    @Inject
+    lateinit var jwt: JsonWebToken
 
     @GET
     @Path("/tickets")
@@ -44,6 +45,32 @@ class TicketResource {
     }
 
 
+    @GET
+    @Path("/myTickets")
+    @RolesAllowed("user","admin" )
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @Transactional // Make sure the session is open while mapping
+    fun myTickets(): Response {
+        val email = (jwt.getClaim<Any>("email") as? String)?.toString()
+        if (email == null) {
+            println("Invalid token")
+            return Response.status(Response.Status.UNAUTHORIZED)
+                .entity(mapOf("error" to "Invalid user token")).build()
+        }
+
+        val user = userService.findByEmail(email)
+
+            ?: return Response.status(Response.Status.UNAUTHORIZED)
+                .entity(mapOf("error" to "User not found")).build()
+
+        val tickets = ticketService.findByUserEmail(user.email)
+        val dtos = tickets.map { it.toDTO() }
+        return Response.ok(dtos).build()
+    }
+
+
+
     @POST
     @Path("/tickets/create")
     @Consumes(MediaType.APPLICATION_JSON)
@@ -51,19 +78,24 @@ class TicketResource {
     @RolesAllowed("admin","user")
     @Transactional
     fun saveTicket(request: TicketRequest): Response{
-        //  val userId = jwt.getClaim<Long>("id")
-     //   val userId = jwt.getClaim<Any>("id").toString().toLong()
-        val user = userService.findById(1)
-        val issueType = request.type
 
-        /*    val admin = userService.findByType(issueType) ?: return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(mapOf("detail" to "No admin available for issue type: $issueType"))
-                    .build()*/
+        val userId = (jwt.getClaim<Any>("email") as? String)?.toString()
+        if (userId == null) {
+            println("Invalid token")
+            return Response.status(Response.Status.UNAUTHORIZED)
+                .entity(mapOf("error" to "Invalid user token")).build()
+        }
+        val user1 = userService.findById(1)
+        val user = userService.findByEmail(userId)
+
+            ?: return Response.status(Response.Status.UNAUTHORIZED)
+                .entity(mapOf("error" to "User not found")).build()
+
 
         val ticket = Ticket(
             subject = request.subject,
             description = request.description,
-            status = "Submitted",
+            status = "open",
             priority = request.priority,
             createdAt = LocalDateTime.now(),
             systemUser = user
@@ -98,6 +130,9 @@ class TicketResource {
 
         return Response.ok(mapOf("message" to "Ticket updated successfully")).build()
     }
+
+
+
 
     @PUT
     @Path("/tickets/priority/{id}")

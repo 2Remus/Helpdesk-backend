@@ -33,6 +33,7 @@ class UserResource {
 
     @GET
     @Path("/users")
+    @RolesAllowed("admin" )
     @Produces(MediaType.APPLICATION_JSON)
     fun findAll(): Response{
             val users = userService.findAll()
