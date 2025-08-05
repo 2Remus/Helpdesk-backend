@@ -77,7 +77,7 @@ class UserResource {
 
     @DELETE
     @Path("/users/{userId}")
-    @RolesAllowed("user" )
+    @RolesAllowed("admin" )
     @Produces(MediaType.APPLICATION_JSON)
     @Transactional
     fun deleteUser(@PathParam("userId") userId: Long): Response {

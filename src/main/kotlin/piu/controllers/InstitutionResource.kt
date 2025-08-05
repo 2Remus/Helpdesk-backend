@@ -43,7 +43,6 @@ class InstitutionResource {
 
     @GET
     @RolesAllowed("admin" )
-
     @Path("/institutions/{id}")
     fun getById(@PathParam("id") id: Long): Response {
         val institution = institutionService.findById(id)
