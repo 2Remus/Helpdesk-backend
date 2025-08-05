@@ -19,6 +19,8 @@ import org.piu.services.TicketService
 import org.piu.services.UserService
 import piu.models.PriorityUpdateRequest
 import piu.models.StatusUpdateRequest
+import piu.models.SystemUserResponseDTO
+import piu.models.TicketResponseDTO
 import project.cardtp.models.TicketRequest
 import java.time.LocalDateTime
 
@@ -108,7 +110,6 @@ class TicketResource {
     }
 
 
-
     @PUT
     @Path("/tickets/status/{id}")
     @RolesAllowed("admin")
@@ -154,6 +155,46 @@ class TicketResource {
         ticketService.saveTicket(ticket)
 
         return Response.ok(mapOf("message" to "Ticket updated successfully")).build()
+    }
+
+
+
+
+
+
+    @GET
+    @Path("/tickets/view/{id}")
+    @RolesAllowed("user", "admin")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @Transactional
+    fun ticketDetails(@PathParam("id") id: Long): Response {
+        val ticket = ticketService.findById(id)
+            ?: return Response.status(Response.Status.NOT_FOUND)
+                .entity("Ticket with ID $id not found").build()
+
+        val reporter = ticket.systemUser
+
+        val reporterDTO = SystemUserResponseDTO(
+            id = reporter?.id,
+            name = reporter?.name,
+            email = reporter?.email,
+            admin = reporter?.admin ?: false,
+            issueType = reporter?.issueType,
+            institutionId = reporter?.institution?.id
+        )
+
+        val ticketResponseDTO = TicketResponseDTO(
+            id = ticket.id,
+            subject = ticket.subject,
+            description = ticket.description,
+            priority = ticket.priority,
+            status = ticket.status,
+            createdAt = ticket.createdAt,
+            reporter = reporterDTO
+        )
+
+        return Response.ok(ticketResponseDTO).build()
     }
 
 

@@ -7,7 +7,6 @@ import jakarta.transaction.Transactional
 import jakarta.ws.rs.Consumes
 import jakarta.ws.rs.DELETE
 import jakarta.ws.rs.GET
-import jakarta.ws.rs.PATCH
 import jakarta.ws.rs.POST
 import jakarta.ws.rs.PUT
 import jakarta.ws.rs.Path
@@ -17,7 +16,6 @@ import jakarta.ws.rs.core.MediaType
 import jakarta.ws.rs.core.Response
 import org.piu.models.SystemUser
 import org.piu.services.UserService
-import piu.models.InstitutionRequest
 import piu.models.SystemUserDTO
 import piu.models.SystemUserResponseDTO
 import piu.models.UserRequest
