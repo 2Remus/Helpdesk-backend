@@ -9,16 +9,11 @@ import jakarta.ws.rs.Produces
 import jakarta.ws.rs.core.MediaType
 import jakarta.ws.rs.core.Response
 import org.piu.models.SystemUser
-import org.piu.repositories.UserRepository
 import piu.models.LoginRequest
 import piu.models.LoginResponse
 import piu.models.SystemUserDTO
 import java.security.MessageDigest
-import java.time.Duration
-import io.smallrye.jwt.build.Jwt
 import org.piu.services.UserService
-import java.nio.file.Files
-import java.nio.file.Paths
 import java.security.KeyFactory
 import java.security.interfaces.RSAPrivateKey
 import java.security.spec.PKCS8EncodedKeySpec
@@ -30,6 +25,14 @@ import com.nimbusds.jose.JWSHeader
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.crypto.RSASSASigner
+import io.quarkus.mailer.Mail
+import io.quarkus.mailer.Mailer
+import jakarta.annotation.security.PermitAll
+import jakarta.transaction.Transactional
+import jakarta.ws.rs.GET
+import jakarta.ws.rs.PathParam
+import piu.models.RegisterRequest
+import java.util.UUID
 
 @Path("/api")
 class AuthResource {
@@ -44,9 +47,10 @@ class AuthResource {
         println("Login request for: ${req.email}")
         val user = userService.findByEmail(req.email)
             ?: return Response.status(Response.Status.UNAUTHORIZED).entity("Invalid credentials").build()
-
-        //  val hashed = BcryptUtil.bcryptHash(req.password)
         println("User"+user.email)
+        if(!user.active){
+            return Response.status(Response.Status.UNAUTHORIZED).entity("Invalid credentials").build()
+        }
         return when {
             // Already using bcrypt
 
@@ -57,6 +61,7 @@ class AuthResource {
                     Response.status(Response.Status.UNAUTHORIZED).entity("Invalid credentials").build()
                 } else {
                     println("Bcrypt match")
+
                     createJwtResponse(user)
                 }
             }
@@ -88,6 +93,7 @@ class AuthResource {
             issueType = user.issueType,
             name = user.name,
             password = "",
+            active = user.active,
             institutionId = 0
         )
         return Response.ok(LoginResponse(token , userDTO)).build()
@@ -140,7 +146,63 @@ class AuthResource {
 
         return signedJWT.serialize()
     }
+    @Inject
+    lateinit var mailer: Mailer
 
+    @POST
+    @Path("/register")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Transactional
+    fun register(req: RegisterRequest): Response {
+
+        val userExist = userService.findByEmail(req.email)
+        if (userExist != null) return Response.status(Response.Status.CONFLICT).entity("Email already exists").build()
+
+        val token = UUID.randomUUID().toString()
+        val hashedPassword = BcryptUtil.bcryptHash(req.password)
+        val user = SystemUser(
+            name = req.name,
+            email = req.email,
+            hashedPassword = hashedPassword,
+            activationToken = token,
+            active = false
+        )
+        userService.save(user)
+        val activationLink = "http://localhost:5173/help-desk/activate?token=$token"
+        mailer.send(
+            Mail.withText(
+                user.email,
+                "Activate Your Helpdesk Account",
+                "Click the link to activate your account: $activationLink"
+            )
+        )
+        return Response.ok("Registration successful, check your email to activate your account.").build()
+    }
+
+
+
+
+    @POST
+    @Path("/activate/{token}")
+    @PermitAll
+    @Transactional
+    fun activateUser(@PathParam("token") token: String): Response {
+        println("activation started: $token")
+
+        val user = userService.findByActivationToken(token)
+        println("User to activate: ${user?.email}")
+        if (user == null) {
+            return Response.status(Response.Status.NOT_FOUND)
+                .entity("Invalid token")
+                .build()
+        }
+
+        user.active = true
+        user.activationToken = null
+        userService.updateUser(user)
+
+        return Response.ok("Account activated. You may now log in.").build()
+    }
 
 
 

@@ -181,6 +181,7 @@ class TicketResource {
             email = reporter?.email,
             admin = reporter?.admin ?: false,
             issueType = reporter?.issueType,
+            active = reporter?.active ?: false,
             institutionId = reporter?.institution?.id
         )
 

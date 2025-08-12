@@ -8,7 +8,7 @@ import org.piu.models.SystemUser
 class UserRepository: PanacheRepository<SystemUser>  {
     override fun findById(id: Long): SystemUser? = find("id",id).firstResult<SystemUser>()
 
-    fun findByEmail(email: String): SystemUser? {
+    fun findByEmail(email: String?): SystemUser? {
         return find("email",email).firstResult<SystemUser>()
     }
 

@@ -41,6 +41,12 @@ data class SystemUser(
     @JoinColumn(name = "institution_id")
     var institution: Institution ?= null,
 
+    @Column(nullable = false)
+    var active: Boolean = false,
+
+    @Column
+    var activationToken: String? = null,
+
     @OneToMany(mappedBy = "systemUser", cascade = [CascadeType.ALL], orphanRemoval = true)
     var tickets: List<Ticket> = mutableListOf()
 )

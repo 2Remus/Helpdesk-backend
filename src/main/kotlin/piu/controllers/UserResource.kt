@@ -20,6 +20,7 @@ import piu.models.SystemUserDTO
 import piu.models.SystemUserResponseDTO
 import piu.models.UserRequest
 import piu.models.UserRoleRequest
+import piu.models.UserStatusRequest
 import piu.models.toDTO
 import java.time.LocalDateTime
 
@@ -68,6 +69,7 @@ class UserResource {
            email = user.email,
            issueType = user.issueType,
            admin = user.admin,
+           active = user.active,
            institutionId = user.institution?.id
 
        )
@@ -157,6 +159,28 @@ class UserResource {
         return Response.ok(mapOf("message" to "User updated successfully")).build()
     }
 
+
+    @PUT
+    @Path("/users/edit/activeStatus/{id}")
+    @RolesAllowed("admin")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @Transactional
+    fun updateUserActiveStatus(
+        @PathParam("id") id: Long,
+        request: UserStatusRequest
+    ): Response {
+        val user = userService.findById(id)
+            ?: return Response.status(Response.Status.NOT_FOUND)
+                .entity("User with id $id not found").build()
+
+        user.active = request.active
+        user.updatedAt = LocalDateTime.now()
+
+        userService.save(user)
+
+        return Response.ok(mapOf("message" to "User updated successfully")).build()
+    }
 
 
 }

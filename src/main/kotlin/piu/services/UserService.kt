@@ -22,7 +22,7 @@ class UserService {
 
     }
 
-    fun findByEmail(email: String): SystemUser?{
+    fun findByEmail(email: String?): SystemUser?{
         return userRepository.findByEmail(email)
     }
 
@@ -49,6 +49,10 @@ class UserService {
 
     fun findByType(type: String): SystemUser?{
         return userRepository.find("isAdmin = true and issueType=?1",type).firstResult<SystemUser>()
+    }
+
+    fun findByActivationToken(token: String): SystemUser?{
+        return userRepository.find("activationToken=?1",token).firstResult<SystemUser>()
     }
 
     fun save(user: SystemUser) {

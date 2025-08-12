@@ -5,6 +5,7 @@ data class SystemUserResponseDTO(
     val name: String?,
     val email: String?,
     val admin: Boolean,
+    val active: Boolean,
     val issueType: String?,
     val institutionId: Long?
 )
