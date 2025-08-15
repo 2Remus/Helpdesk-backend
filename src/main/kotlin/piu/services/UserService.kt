@@ -1,6 +1,7 @@
 package org.piu.services
 
 import io.quarkus.panache.common.Parameters
+import io.quarkus.panache.common.Sort
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
 import jakarta.transaction.Transactional
@@ -14,7 +15,7 @@ class UserService {
     lateinit var userRepository: UserRepository
 
     fun findAll(): List<SystemUser>{
-        return userRepository.listAll()
+        return userRepository.listAll(Sort.ascending("name"))
     }
 
     fun findById(id: Long): SystemUser?{

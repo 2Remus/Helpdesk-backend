@@ -169,13 +169,27 @@ class AuthResource {
         )
         userService.save(user)
         val activationLink = "http://localhost:5173/help-desk/activate?token=$token"
-        mailer.send(
+      /*  mailer.send(
             Mail.withText(
                 user.email,
                 "Activate Your Helpdesk Account",
                 "Click the link to activate your account: $activationLink"
+            ).setFrom("boldxpressionvc@gmail.com")
+        )*/
+        try {
+            mailer.send(
+                Mail.withText(
+                    user.email,
+                    "Activate Your Helpdesk Account",
+                    "Click the link to activate your account: $activationLink"
+                ).setFrom("boldxpressionvc@gmail.com")
             )
-        )
+        } catch (e: Exception) {
+            // Consider rolling back the user or allowing resend later
+           println("Failed to send activation mail to ${user.email}"+ e)
+            return Response.serverError().entity("Could not send activation email. Please try again.").build()
+        }
+
         return Response.ok("Registration successful, check your email to activate your account.").build()
     }
 
