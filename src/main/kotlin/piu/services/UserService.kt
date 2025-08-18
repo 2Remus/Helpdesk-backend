@@ -28,13 +28,6 @@ class UserService {
     }
 
 
-   /* fun updateUser(systemUser: SystemUser){
-        userRepository.update(
-            "email = '${systemUser.email}'"+
-                    "where id = ${systemUser.id}"
-        )
-
-    }*/
     fun updateUser(systemUser: SystemUser) {
         userRepository.update(
             "email = :email where id = :id",

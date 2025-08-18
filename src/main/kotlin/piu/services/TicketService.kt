@@ -32,10 +32,6 @@ class TicketService {
         return ticketRepository.findByUserEmail(email)
     }
 
-
-
-
-
     fun saveTicket(ticket: Ticket){
         return ticketRepository.persist(ticket)
     }
