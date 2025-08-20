@@ -168,7 +168,7 @@ class AuthResource {
             active = false
         )
         userService.save(user)
-        val activationLink = "http://localhost:5173/help-desk/activate?token=$token"
+        val activationLink = "http://192.168.1.112/help-desk/activate?token=$token"
       /*  mailer.send(
             Mail.withText(
                 user.email,

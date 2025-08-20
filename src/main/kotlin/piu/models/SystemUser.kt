@@ -48,5 +48,8 @@ data class SystemUser(
     var activationToken: String? = null,
 
     @OneToMany(mappedBy = "systemUser", cascade = [CascadeType.ALL], orphanRemoval = true)
-    var tickets: List<Ticket> = mutableListOf()
+    var tickets: List<Ticket> = mutableListOf(),
+
+    @OneToMany(mappedBy = "assignedTo", cascade = [CascadeType.ALL], orphanRemoval = true)
+    var assignedTickets: List<Ticket> = mutableListOf()
 )

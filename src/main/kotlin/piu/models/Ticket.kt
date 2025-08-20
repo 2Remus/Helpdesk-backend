@@ -42,5 +42,12 @@ data class Ticket(
     var systemUser: SystemUser? = null,
 
     @OneToMany(mappedBy = "ticket", cascade = [CascadeType.ALL], orphanRemoval = true)
-    var messages: List<Message> = mutableListOf()
+    var messages: List<Message> = mutableListOf(),
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "assignedTo", nullable = true)
+    var assignedTo: SystemUser? = null,
+
+
+
 )
