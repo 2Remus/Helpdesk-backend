@@ -16,5 +16,9 @@ class UserRepository: PanacheRepository<SystemUser>  {
         return find("type",type).firstResult<SystemUser>()
     }
 
+    fun findByName(name: String?): SystemUser? {
+        return find("name",name).firstResult<SystemUser>()
+    }
+
 
 }

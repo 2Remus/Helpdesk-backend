@@ -27,6 +27,11 @@ class UserService {
         return userRepository.findByEmail(email)
     }
 
+    fun findByName(name: String?): SystemUser?{
+        return userRepository.findByName(name)
+    }
+
+
 
     fun updateUser(systemUser: SystemUser) {
         userRepository.update(

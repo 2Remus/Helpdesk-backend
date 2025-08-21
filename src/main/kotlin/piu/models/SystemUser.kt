@@ -12,6 +12,7 @@ import jakarta.persistence.ManyToOne
 import jakarta.persistence.OneToMany
 import piu.models.Institution
 import piu.models.SystemUserResponseDTO
+import piu.models.TicketAssignment
 import java.time.LocalDateTime
 
 @Entity
@@ -19,8 +20,10 @@ data class SystemUser(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     var id: Long? = null,
+
     @Column(nullable = false)
     var name: String = "",
+
     @Column(nullable = false, unique = true, length = 120)
     var email: String? = null,
 
@@ -35,8 +38,10 @@ data class SystemUser(
 
     @Column(nullable = false)
     var createdAt: LocalDateTime = LocalDateTime.now(),
+
     @Column(nullable = true)
     var updatedAt: LocalDateTime? = null,
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "institution_id")
     var institution: Institution ?= null,
@@ -50,6 +55,7 @@ data class SystemUser(
     @OneToMany(mappedBy = "systemUser", cascade = [CascadeType.ALL], orphanRemoval = true)
     var tickets: List<Ticket> = mutableListOf(),
 
-    @OneToMany(mappedBy = "assignedTo", cascade = [CascadeType.ALL], orphanRemoval = true)
-    var assignedTickets: List<Ticket> = mutableListOf()
-)
+    @OneToMany(mappedBy = "assignedUser", cascade = [CascadeType.ALL], orphanRemoval = true)
+    var assignedTickets: List<TicketAssignment> = mutableListOf(),
+
+    )

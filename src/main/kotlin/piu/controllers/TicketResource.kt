@@ -17,10 +17,13 @@ import org.piu.models.Ticket
 import org.piu.models.toDTO
 import org.piu.services.TicketService
 import org.piu.services.UserService
+import piu.DTO.TicketAssignmentRequest
 import piu.models.PriorityUpdateRequest
 import piu.models.StatusUpdateRequest
 import piu.models.SystemUserResponseDTO
+import piu.models.TicketAssignment
 import piu.models.TicketResponseDTO
+import piu.services.TicketAssignmentService
 import project.cardtp.models.TicketRequest
 import java.time.LocalDateTime
 
@@ -31,6 +34,10 @@ class TicketResource {
 
     @Inject
     lateinit var userService: UserService
+
+    @Inject
+    lateinit var ticketAssignmentService: TicketAssignmentService
+
     @Inject
     lateinit var jwt: JsonWebToken
 
@@ -157,6 +164,49 @@ class TicketResource {
         return Response.ok(mapOf("message" to "Ticket updated successfully")).build()
     }
 
+    @PUT
+    @Path("/tickets/assign/{id}")
+    @RolesAllowed("admin")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @Transactional
+    fun updateTicketAssignment(
+        @PathParam("id") id: Long,
+        assignTo: TicketAssignmentRequest
+    ): Response {
+        val ticket = ticketService.findById(id)
+            ?: return Response.status(Response.Status.NOT_FOUND)
+                .entity("ticket with id $id not found").build()
+
+        val assignee = ticketAssignmentService.hasCurrent(id)
+        if(assignee){
+            val existingAssignment = ticketAssignmentService.findCurrent(id)
+            existingAssignment.updatedAt = LocalDateTime.now()
+            existingAssignment.current = false;
+            ticketAssignmentService.saveTicketAssignment(existingAssignment)
+
+        }
+        if(assignTo.assignment != "Unassigned"){
+            val user = userService.findByName(assignTo.assignment)
+            val ticketAssignment = TicketAssignment(
+                createdAt = LocalDateTime.now(),
+                current = true,
+                active = true,
+                ticket = ticket,
+                assignedUser = user
+
+            )
+            ticketAssignmentService.saveTicketAssignment(ticketAssignment)
+
+        }
+
+        ticket.assignedTo = assignTo.assignment
+        ticket.updatedAt = LocalDateTime.now()
+        ticketService.saveTicket(ticket)
+
+        return Response.ok(mapOf("message" to "Ticket updated successfully")).build()
+    }
+
 
 
 
@@ -192,7 +242,8 @@ class TicketResource {
             priority = ticket.priority,
             status = ticket.status,
             createdAt = ticket.createdAt,
-            reporter = reporterDTO
+            reporter = reporterDTO,
+            assignedTo = ticket.assignedTo
         )
 
         return Response.ok(ticketResponseDTO).build()

@@ -11,6 +11,7 @@ import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.OneToMany
 import jakarta.persistence.Table
+import piu.models.TicketAssignment
 import java.time.LocalDateTime
 
 @Entity
@@ -27,10 +28,10 @@ data class Ticket(
     var description: String? = null,
 
     @Column(nullable = false, length = 20)
-    var status: String = "open",
+    var status: String = "Open",
 
     @Column(nullable = false, length = 20)
-    var priority: String = "low",
+    var priority: String = "Low",
 
     @Column(nullable = false)
     var createdAt: LocalDateTime = LocalDateTime.now(),
@@ -44,10 +45,13 @@ data class Ticket(
     @OneToMany(mappedBy = "ticket", cascade = [CascadeType.ALL], orphanRemoval = true)
     var messages: List<Message> = mutableListOf(),
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "assignedTo", nullable = true)
-    var assignedTo: SystemUser? = null,
+    @Column(nullable = true, length = 20)
+    var assignedTo: String = "",
+
+    @OneToMany(mappedBy = "ticket", cascade = [CascadeType.ALL], orphanRemoval = true)
+    var ticketAssignments: List<TicketAssignment> = mutableListOf(),
 
 
 
-)
+
+    )
