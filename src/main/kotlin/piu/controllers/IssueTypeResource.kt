@@ -38,6 +38,7 @@ class IssueTypeResource {
 
     @GET
     @Path("/issue-types")
+
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     @Transactional // Make sure the session is open while mapping

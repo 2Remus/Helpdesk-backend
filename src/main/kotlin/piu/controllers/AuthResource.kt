@@ -32,12 +32,18 @@ import jakarta.transaction.Transactional
 import jakarta.ws.rs.GET
 import jakarta.ws.rs.PathParam
 import piu.models.RegisterRequest
+import piu.services.EmailService
 import java.util.UUID
 
 @Path("/api")
 class AuthResource {
     @Inject
     lateinit var userService: UserService
+
+
+    @Inject
+    lateinit var emailService: EmailService
+
 
     @POST
     @Path("/login")
@@ -169,13 +175,6 @@ class AuthResource {
         )
         userService.save(user)
         val activationLink = "http://192.168.1.112/help-desk/activate?token=$token"
-      /*  mailer.send(
-            Mail.withText(
-                user.email,
-                "Activate Your Helpdesk Account",
-                "Click the link to activate your account: $activationLink"
-            ).setFrom("boldxpressionvc@gmail.com")
-        )*/
         try {
             mailer.send(
                 Mail.withText(

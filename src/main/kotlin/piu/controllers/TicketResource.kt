@@ -23,6 +23,7 @@ import piu.models.StatusUpdateRequest
 import piu.models.SystemUserResponseDTO
 import piu.models.TicketAssignment
 import piu.models.TicketResponseDTO
+import piu.services.EmailService
 import piu.services.TicketAssignmentService
 import project.cardtp.models.TicketRequest
 import java.time.LocalDateTime
@@ -37,6 +38,10 @@ class TicketResource {
 
     @Inject
     lateinit var ticketAssignmentService: TicketAssignmentService
+
+    @Inject
+    lateinit var emailService: EmailService
+
 
     @Inject
     lateinit var jwt: JsonWebToken
@@ -164,6 +169,9 @@ class TicketResource {
         return Response.ok(mapOf("message" to "Ticket updated successfully")).build()
     }
 
+
+
+
     @PUT
     @Path("/tickets/assign/{id}")
     @RolesAllowed("admin")
@@ -179,30 +187,58 @@ class TicketResource {
                 .entity("ticket with id $id not found").build()
 
         val assignee = ticketAssignmentService.hasCurrent(id)
-        if(assignee){
+        if (assignee) {
             val existingAssignment = ticketAssignmentService.findCurrent(id)
             existingAssignment.updatedAt = LocalDateTime.now()
-            existingAssignment.current = false;
+            existingAssignment.current = false
             ticketAssignmentService.saveTicketAssignment(existingAssignment)
-
         }
-        if(assignTo.assignment != "Unassigned"){
+
+        if (assignTo.assignment != "Unassigned") {
             val user = userService.findByName(assignTo.assignment)
+                ?: return Response.status(Response.Status.BAD_REQUEST)
+                    .entity("User '${assignTo.assignment}' not found").build()
+
             val ticketAssignment = TicketAssignment(
                 createdAt = LocalDateTime.now(),
                 current = true,
                 active = true,
                 ticket = ticket,
                 assignedUser = user
-
             )
             ticketAssignmentService.saveTicketAssignment(ticketAssignment)
 
-        }
+            // update ticket before sending email
+            ticket.assignedTo = assignTo.assignment
+            ticket.updatedAt = LocalDateTime.now()
+            ticketService.saveTicket(ticket)
 
-        ticket.assignedTo = assignTo.assignment
-        ticket.updatedAt = LocalDateTime.now()
-        ticketService.saveTicket(ticket)
+            val ticketLink = "http://192.168.1.112/help-desk/tickets/view/${ticket.id}"
+
+            if (user?.email.isNullOrBlank()) {
+                println("No email found for assigned user: ${assignTo.assignment}")
+            } else {
+                println("Sending email to ${user?.email}")
+            }
+            // make sure email is not null
+            user.email?.let { email ->
+                emailService.sendTicketAssignmentEmail(
+                    email,
+                    ticket.assignedTo,
+                    ticket.subject,
+                    ticket.priority,
+                    ticket.systemUser?.name ?: "System",
+                    ticketLink
+                )
+            }
+            println("Send notification via email: "+ user.email)
+
+        } else {
+            // unassign case
+            ticket.assignedTo = "Unassigned"
+            ticket.updatedAt = LocalDateTime.now()
+            ticketService.saveTicket(ticket)
+        }
 
         return Response.ok(mapOf("message" to "Ticket updated successfully")).build()
     }

@@ -94,7 +94,6 @@ class UserResource {
 
 
 
-
     @GET
     @Path("/users/{usId}")
     @RolesAllowed("admin" )
