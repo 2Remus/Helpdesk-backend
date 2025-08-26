@@ -50,31 +50,23 @@ class AuthResource {
     @Produces(MediaType.APPLICATION_JSON)
     @Consumes(MediaType.APPLICATION_JSON)
     fun login(req: LoginRequest): Response {
-        println("Login request for: ${req.email}")
         val user = userService.findByEmail(req.email)
             ?: return Response.status(Response.Status.UNAUTHORIZED).entity("Invalid credentials").build()
-        println("User"+user.email)
-        if(!user.active){
+       if(!user.active){
             return Response.status(Response.Status.UNAUTHORIZED).entity("Invalid credentials").build()
         }
         return when {
             // Already using bcrypt
-
             user.hashedPassword?.startsWith("$2a$") == true || user.hashedPassword ?.startsWith("$2b$") == true -> {
                 if (!BcryptUtil.matches(req.password, user.hashedPassword)) {
-                    println("Req: "+req.email)
-                    println("Bcrypt password mismatch"+" "+user.hashedPassword)
                     Response.status(Response.Status.UNAUTHORIZED).entity("Invalid credentials").build()
                 } else {
-                    println("Bcrypt match")
-
                     createJwtResponse(user)
                 }
             }
 
             // Fallback to SHA-256 check
             sha256(req.password) == user.hashedPassword -> {
-                println("SHA256 match. Migrating to bcrypt...")
                 // Re-hash with bcrypt and update the user
                 val newBcrypt = BcryptUtil.bcryptHash(req.password)
                 user.hashedPassword = newBcrypt
