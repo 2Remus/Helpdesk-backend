@@ -40,6 +40,17 @@ class UserResource {
         return Response.ok(userdtos).build()
     }
 
+
+    @GET
+    @Path("/available-users")
+    @RolesAllowed("admin" )
+    @Produces(MediaType.APPLICATION_JSON)
+    fun findAdminUsers(): Response{
+        val users = userService.findAvailableUsers()
+        val userdtos = users.map { it.toDTO() }
+        return Response.ok(userdtos).build()
+    }
+
     @POST
     @RolesAllowed("admin" )
     @Path("/users/create")
@@ -122,10 +133,12 @@ class UserResource {
             ?: return Response.status(Response.Status.NOT_FOUND)
                 .entity("User with id $id not found").build()
 
+        val type = request.issueType ?:"";
+
         user.name = request.name
         user.email = request.email
         user.admin = request.admin
-        user.issueType = request.issueType
+        user.issueType = type
         user.updatedAt = LocalDateTime.now()
 
         userService.updateUser(user)

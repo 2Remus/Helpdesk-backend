@@ -109,7 +109,7 @@ class TicketResource {
         val ticket = Ticket(
             subject = request.subject,
             description = request.description,
-            status = "open",
+            status = "Open",
             priority = request.priority,
             createdAt = LocalDateTime.now(),
             systemUser = user
@@ -140,6 +140,24 @@ class TicketResource {
         ticket.updatedAt = LocalDateTime.now()
 
         ticketService.saveTicket(ticket)
+
+        val ticketLink = "http://localhost:5173/help-desk/tickets/view/${ticket.id}"
+        val ticketOwner = ticket.systemUser;
+        if (ticketOwner?.email.isNullOrBlank()) {
+            println("No email found for user: ${ticketOwner?.email}")
+        } else {
+            println("Sending email to ${ticketOwner.email}")
+        }
+        // make sure email is not null
+        ticketOwner?.email?.let { email -> emailService.sendTicketStatusUpdateEmail(
+                email,
+                ticket.assignedTo,
+                ticket.subject,
+                ticket.priority,
+                ticket.systemUser?.name ?: "System",
+                ticketLink
+            )
+        }
 
         return Response.ok(mapOf("message" to "Ticket updated successfully")).build()
     }
@@ -213,7 +231,7 @@ class TicketResource {
             ticket.updatedAt = LocalDateTime.now()
             ticketService.saveTicket(ticket)
 
-            val ticketLink = "http://192.168.1.112/help-desk/tickets/view/${ticket.id}"
+            val ticketLink = "http://localhost:5173/help-desk/tickets/view/${ticket.id}"
 
             if (user?.email.isNullOrBlank()) {
                 println("No email found for assigned user: ${assignTo.assignment}")
@@ -231,7 +249,6 @@ class TicketResource {
                     ticketLink
                 )
             }
-            println("Send notification via email: "+ user.email)
 
         } else {
             // unassign case

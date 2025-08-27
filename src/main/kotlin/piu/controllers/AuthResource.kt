@@ -25,11 +25,9 @@ import com.nimbusds.jose.JWSHeader
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.crypto.RSASSASigner
-import io.quarkus.mailer.Mail
 import io.quarkus.mailer.Mailer
 import jakarta.annotation.security.PermitAll
 import jakarta.transaction.Transactional
-import jakarta.ws.rs.GET
 import jakarta.ws.rs.PathParam
 import piu.models.RegisterRequest
 import piu.services.EmailService
@@ -163,18 +161,25 @@ class AuthResource {
             email = req.email,
             hashedPassword = hashedPassword,
             activationToken = token,
-            active = false
+            active = false,
+            issueType = ""
         )
         userService.save(user)
-        val activationLink = "http://192.168.1.112/help-desk/activate?token=$token"
+        val activationLink = "http://localhost:5173/help-desk/activate?token=$token"
         try {
-            mailer.send(
+           /* mailer.send(
                 Mail.withText(
                     user.email,
                     "Activate Your Helpdesk Account",
                     "Click the link to activate your account: $activationLink"
                 ).setFrom("boldxpressionvc@gmail.com")
+            )*/
+            emailService.sendActivationEmail(
+                to = user.email,
+                name = user.name,
+                activationLink = activationLink
             )
+
         } catch (e: Exception) {
             // Consider rolling back the user or allowing resend later
            println("Failed to send activation mail to ${user.email}"+ e)

@@ -1,6 +1,7 @@
 package org.piu.repositories
 
 import io.quarkus.hibernate.orm.panache.PanacheRepository
+import io.quarkus.panache.common.Sort
 import jakarta.enterprise.context.ApplicationScoped
 import org.piu.models.SystemUser
 
@@ -20,5 +21,9 @@ class UserRepository: PanacheRepository<SystemUser>  {
         return find("name",name).firstResult<SystemUser>()
     }
 
+
+    fun findAvailableUsers(): List<SystemUser> {
+        return find("admin", true).list()
+    }
 
 }

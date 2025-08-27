@@ -59,4 +59,9 @@ class UserService {
     }
 
 
+    fun findAvailableUsers(): List<SystemUser>{
+        return userRepository.findAvailableUsers()
+    }
+
+
 }
