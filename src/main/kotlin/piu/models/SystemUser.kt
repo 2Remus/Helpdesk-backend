@@ -8,11 +8,13 @@ import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.JoinColumn
+import jakarta.persistence.Lob
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.OneToMany
 import piu.models.Institution
 import piu.models.SystemUserResponseDTO
 import piu.models.TicketAssignment
+import piu.models.UserSignature
 import java.time.LocalDateTime
 
 @Entity
@@ -57,5 +59,12 @@ data class SystemUser(
 
     @OneToMany(mappedBy = "assignedUser", cascade = [CascadeType.ALL], orphanRemoval = true)
     var assignedTickets: List<TicketAssignment> = mutableListOf(),
+
+
+    @Column(name = "image", columnDefinition = "bytea")
+    var image: ByteArray? = null,
+
+    @OneToMany(mappedBy = "systemUser", cascade = [CascadeType.ALL], orphanRemoval = true)
+    var userSignatures: List<UserSignature> = mutableListOf(),
 
     )
