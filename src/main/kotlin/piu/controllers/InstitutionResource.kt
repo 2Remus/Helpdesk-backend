@@ -35,8 +35,8 @@ class InstitutionResource {
     @Produces(MediaType.APPLICATION_JSON)
     @Transactional // Make sure the session is open while mapping
     fun findAll(): Response {
-        val tickets = institutionService.findAll()
-        val dtos = tickets.map { it.toDTO() }
+        val institutions = institutionService.findAll()
+        val dtos = institutions.map { it.toDTO() }
         return Response.ok(dtos).build()
     }
 

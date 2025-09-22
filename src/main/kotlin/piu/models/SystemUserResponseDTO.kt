@@ -7,7 +7,7 @@ data class SystemUserResponseDTO(
     val admin: Boolean,
     val active: Boolean,
     val issueType: String?,
-    val institutionId: Long?
+    val institution :InstitutionDTO?
 )
 
 

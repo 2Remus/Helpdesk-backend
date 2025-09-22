@@ -4,6 +4,7 @@ data class UserRequest(
     var name: String,
     var email: String ,
     var admin: Boolean,
-    var issueType: String
+    var issueType: String,
+    var institution: String,
 
 )

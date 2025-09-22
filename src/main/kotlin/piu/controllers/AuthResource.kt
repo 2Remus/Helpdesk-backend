@@ -90,7 +90,7 @@ class AuthResource {
             name = user.name,
             password = "",
             active = user.active,
-            institutionId = 0
+            institution = user.institution?.name,
         )
         return Response.ok(LoginResponse(token , userDTO)).build()
     }

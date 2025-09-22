@@ -11,6 +11,7 @@ data class TicketDTO(
     val createdAt: LocalDateTime,
     val systemUserEmail: String?,
     val assignedTo: String?,
+    val issueType: String?
 )
 
 fun Ticket.toDTO(): TicketDTO = TicketDTO(
@@ -21,5 +22,6 @@ fun Ticket.toDTO(): TicketDTO = TicketDTO(
     priority = this.priority,
     createdAt = this.createdAt,
     systemUserEmail = this.systemUser?.email,
-    assignedTo =  this.assignedTo
+    assignedTo =  this.assignedTo,
+    issueType = this.issueType
 )

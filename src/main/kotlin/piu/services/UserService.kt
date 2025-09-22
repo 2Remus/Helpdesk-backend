@@ -14,14 +14,21 @@ class UserService {
     @Inject
     lateinit var userRepository: UserRepository
 
-    fun findAll(): List<SystemUser>{
+   /* fun findAll(): List<SystemUser>{
         return userRepository.listAll(Sort.ascending("name"))
+    }*/
+    fun findAll(): List<SystemUser> {
+        return userRepository.find("FROM SystemUser u LEFT JOIN FETCH u.institution").list()
     }
 
-    fun findById(id: Long): SystemUser?{
+ /*   fun findById(id: Long): SystemUser?{
         return userRepository.findById(id)
 
-    }
+    }*/
+ fun findById(id: Long): SystemUser? {
+     return userRepository.find("FROM SystemUser u LEFT JOIN FETCH u.institution WHERE u.id = ?1", id)
+         .firstResult()
+ }
 
     fun findByEmail(email: String?): SystemUser?{
         return userRepository.findByEmail(email)

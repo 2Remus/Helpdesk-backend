@@ -29,6 +29,7 @@ import java.time.LocalDateTime
 import org.jboss.resteasy.annotations.providers.multipart.MultipartForm
 import org.jboss.resteasy.annotations.providers.multipart.PartType
 import piu.models.UserSignature
+import piu.services.InstitutionService
 import piu.services.UserSignatureService
 import java.io.ByteArrayInputStream
 import java.io.InputStream
@@ -38,11 +39,13 @@ import java.io.InputStream
 class UserResource {
     @Inject
     lateinit var userService: UserService
+      @Inject
+    lateinit var userSignatureService: UserSignatureService
+
+    @Inject
+    lateinit var institutionService: InstitutionService
 
 
-
-@Inject
-lateinit var userSignatureService: UserSignatureService
     @GET
     @Path("/users")
    // @RolesAllowed("admin" )
@@ -71,20 +74,28 @@ lateinit var userSignatureService: UserSignatureService
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     @Transactional
-    fun createUser(
-        @PathParam("ticketId") ticketId: Long,
-        dto: SystemUserDTO
+    fun createUser(dto: SystemUserDTO
     ): Response {
 
         val newBcrypt = BcryptUtil.bcryptHash(dto.password)
-
+      // val selectedInstitution = institutionService.findByName(dto.institution)
+        println("Institution from DTO "+dto.institution)
         val user = SystemUser()
         user.email = dto.email
         user.name = dto.name
         user.admin = dto.admin
         user.hashedPassword  = newBcrypt
         user.createdAt = LocalDateTime.now()
-        user.issueType = dto.issueType
+        user.issueType = if(dto.admin){
+            dto.issueType;
+        } else ""
+
+        user.institution = if (!dto.institution.isNullOrBlank()) {
+            institutionService.findByName(dto.institution)
+        } else {
+            null
+        }
+
 
         userService.save(user)
         // Map to DTO before returning
@@ -95,7 +106,7 @@ lateinit var userSignatureService: UserSignatureService
            issueType = user.issueType,
            admin = user.admin,
            active = user.active,
-           institutionId = user.institution?.id
+           institution = user.institution?.toDTO()
 
        )
        return Response.status(Response.Status.CREATED).entity(userResponseDTO).build()
@@ -103,7 +114,7 @@ lateinit var userSignatureService: UserSignatureService
 
 
     @DELETE
-    @Path("/users/{userId}")
+    @Path("/users/change/{userId}")
     @RolesAllowed("admin" )
     @Produces(MediaType.APPLICATION_JSON)
     @Transactional
@@ -147,13 +158,21 @@ lateinit var userSignatureService: UserSignatureService
             ?: return Response.status(Response.Status.NOT_FOUND)
                 .entity("User with id $id not found").build()
 
-        val type = request.issueType ?:"";
+        val type = if(request.admin){
+                request.issueType;
+        } else ""
 
         user.name = request.name
         user.email = request.email
         user.admin = request.admin
         user.issueType = type
         user.updatedAt = LocalDateTime.now()
+
+        user.institution = if (request.institution.isNotBlank()) {
+            institutionService.findByName(request.institution)
+        } else {
+            null
+        }
 
         userService.updateUser(user)
         return Response.status(Response.Status.OK).build()

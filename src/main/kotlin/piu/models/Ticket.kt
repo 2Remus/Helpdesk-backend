@@ -51,6 +51,8 @@ data class Ticket(
     @OneToMany(mappedBy = "ticket", cascade = [CascadeType.ALL], orphanRemoval = true)
     var ticketAssignments: List<TicketAssignment> = mutableListOf(),
 
+    @Column(nullable = true, length = 255)
+    var issueType: String? = "",
 
 
 

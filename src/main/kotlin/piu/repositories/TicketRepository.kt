@@ -4,7 +4,9 @@ import io.quarkus.hibernate.orm.panache.PanacheRepository
 import io.quarkus.panache.common.Sort
 import jakarta.enterprise.context.ApplicationScoped
 import jakarta.validation.constraints.Email
+import org.piu.models.SystemUser
 import org.piu.models.Ticket
+import piu.models.Institution
 
 @ApplicationScoped
 class TicketRepository : PanacheRepository<Ticket>{
@@ -17,5 +19,18 @@ class TicketRepository : PanacheRepository<Ticket>{
 
     fun findByUserEmail(email: String?): List<Ticket> {
         return find("systemUser.email", email).list()
+    }
+
+
+
+    fun findByUserIssueType(issueType: String?): List<Ticket> {
+        return find("issueType", issueType).list()
+    }
+
+
+    fun findAvailableUsers(): List<SystemUser> {
+        return find(
+            "SELECT u FROM SystemUser u LEFT JOIN FETCH u.institution WHERE u.admin = true AND u.active = true"
+        ).list()
     }
 }

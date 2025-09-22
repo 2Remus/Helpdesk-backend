@@ -9,7 +9,8 @@ data class TicketResponseDTO(
     val priority: String,
     val status: String,
     val createdAt: LocalDateTime,
-    val reporter: SystemUserResponseDTO,
+    val reporter: SystemUserResponseDTO?,
     val assignedTo: String,
+    val issueType: String?,
 
-)
+    )

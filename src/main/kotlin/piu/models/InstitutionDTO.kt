@@ -1,5 +1,7 @@
 package piu.models
 
+import piu.DTO.IssueTypeDTO
+
 data class InstitutionDTO(
     val id: Long?,
     val name: String?,

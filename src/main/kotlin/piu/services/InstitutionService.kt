@@ -33,6 +33,13 @@ class InstitutionService {
         )
 
     }*/
+
+
+    fun findByName(name: String?): Institution? {
+        return institutionRepository.findByName(name)
+    }
+
+
     @Transactional
     fun updateInstitution(institution: Institution) {
         institutionRepository.persist(institution)

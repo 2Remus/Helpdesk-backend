@@ -17,12 +17,13 @@ import org.piu.models.Ticket
 import org.piu.models.toDTO
 import org.piu.services.TicketService
 import org.piu.services.UserService
+import piu.DTO.IssueTypeUpdateRequest
 import piu.DTO.TicketAssignmentRequest
 import piu.models.PriorityUpdateRequest
 import piu.models.StatusUpdateRequest
-import piu.models.SystemUserResponseDTO
 import piu.models.TicketAssignment
 import piu.models.TicketResponseDTO
+import piu.models.toDTO
 import piu.services.EmailService
 import piu.services.TicketAssignmentService
 import project.cardtp.models.TicketRequest
@@ -52,12 +53,49 @@ class TicketResource {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     @Transactional // Make sure the session is open while mapping
+    fun findAllByInstitution(): Response {
+        val tickets = ticketService.findAll()
+        val dtos = tickets.map { it.toDTO() }
+        return Response.ok(dtos).build()
+    }
+
+
+    @GET
+    @Path("/tickets")
+    @RolesAllowed("admin" )
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @Transactional // Make sure the session is open while mapping
     fun findAll(): Response {
         val tickets = ticketService.findAll()
         val dtos = tickets.map { it.toDTO() }
         return Response.ok(dtos).build()
     }
 
+    @GET
+    @Path("/tickets-by-issues")
+    @RolesAllowed("admin" )
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @Transactional // Make sure the session is open while mapping
+    fun findByIssueType(): Response {
+
+        val email = (jwt.getClaim<Any>("email") as? String)?.toString()
+        if (email == null) {
+            println("Invalid token")
+            return Response.status(Response.Status.UNAUTHORIZED)
+                .entity(mapOf("error" to "Invalid user token")).build()
+        }
+
+        val user = userService.findByEmail(email)
+
+            ?: return Response.status(Response.Status.UNAUTHORIZED)
+                .entity(mapOf("error" to "User not found")).build()
+
+        val tickets = ticketService.findByUserIssueType(user.issueType)
+        val dtos = tickets.map { it.toDTO() }
+        return Response.ok(dtos).build()
+    }
 
     @GET
     @Path("/myTickets")
@@ -99,7 +137,6 @@ class TicketResource {
             return Response.status(Response.Status.UNAUTHORIZED)
                 .entity(mapOf("error" to "Invalid user token")).build()
         }
-        val user1 = userService.findById(1)
         val user = userService.findByEmail(userId)
 
             ?: return Response.status(Response.Status.UNAUTHORIZED)
@@ -110,9 +147,10 @@ class TicketResource {
             subject = request.subject,
             description = request.description,
             status = "Open",
-            priority = request.priority,
+            priority = "low",//request.priority,
             createdAt = LocalDateTime.now(),
-            systemUser = user
+            systemUser = user,
+            issueType = request.type
 
         )
 
@@ -278,15 +316,16 @@ class TicketResource {
 
         val reporter = ticket.systemUser
 
-        val reporterDTO = SystemUserResponseDTO(
+     /*   val reporterDTO = SystemUserResponseDTO(
             id = reporter?.id,
             name = reporter?.name,
             email = reporter?.email,
             admin = reporter?.admin ?: false,
             issueType = reporter?.issueType,
             active = reporter?.active ?: false,
-            institutionId = reporter?.institution?.id
-        )
+            institution = TODO()
+        )*/
+        val reporterDTO = ticket.systemUser?.toDTO()
 
         val ticketResponseDTO = TicketResponseDTO(
             id = ticket.id,
@@ -296,12 +335,37 @@ class TicketResource {
             status = ticket.status,
             createdAt = ticket.createdAt,
             reporter = reporterDTO,
-            assignedTo = ticket.assignedTo
+            assignedTo = ticket.assignedTo,
+            issueType = ticket.issueType,
         )
 
         return Response.ok(ticketResponseDTO).build()
     }
 
+
+
+
+    @PUT
+    @Path("/tickets/issue-type/{id}")
+    @RolesAllowed("admin")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @Transactional
+    fun updateTicketIssueType(
+        @PathParam("id") id: Long,
+        request: IssueTypeUpdateRequest
+    ): Response {
+        val ticket = ticketService.findById(id)
+            ?: return Response.status(Response.Status.NOT_FOUND)
+                .entity("ticket with id $id not found").build()
+
+        ticket.issueType = request.issueType
+        ticket.updatedAt = LocalDateTime.now()
+
+        ticketService.saveTicket(ticket)
+
+        return Response.ok(mapOf("message" to "Ticket updated successfully")).build()
+    }
 
 
 
