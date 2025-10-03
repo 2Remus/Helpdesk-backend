@@ -48,7 +48,7 @@ class TicketResource {
     lateinit var jwt: JsonWebToken
 
     @GET
-    @Path("/tickets")
+    @Path("/tickets/institution")
     @RolesAllowed("admin" )
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
@@ -96,6 +96,33 @@ class TicketResource {
         val dtos = tickets.map { it.toDTO() }
         return Response.ok(dtos).build()
     }
+
+    @GET
+    @Path("/tickets/my-assigned")
+    @RolesAllowed("admin" )
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @Transactional // Make sure the session is open while mapping
+    fun assignedTickets(): Response {
+
+        val email = (jwt.getClaim<Any>("email") as? String)?.toString()
+        if (email == null) {
+            println("Invalid token")
+            return Response.status(Response.Status.UNAUTHORIZED)
+                .entity(mapOf("error" to "Invalid user token")).build()
+        }
+
+        val user = userService.findByEmail(email)
+
+            ?: return Response.status(Response.Status.UNAUTHORIZED)
+                .entity(mapOf("error" to "User not found")).build()
+
+        val tickets = ticketService.findTicketsAssignedToUser(user.name)
+        val dtos = tickets.map { it.toDTO() }
+        return Response.ok(dtos).build()
+    }
+
+
 
     @GET
     @Path("/myTickets")
@@ -179,7 +206,8 @@ class TicketResource {
 
         ticketService.saveTicket(ticket)
 
-        val ticketLink = "http://localhost:5173/help-desk/tickets/view/${ticket.id}"
+        val ticketLink = "http://138.68.58.185/help-desk/tickets/view/${ticket.id}"
+
         val ticketOwner = ticket.systemUser;
         if (ticketOwner?.email.isNullOrBlank()) {
             println("No email found for user: ${ticketOwner?.email}")
@@ -269,12 +297,12 @@ class TicketResource {
             ticket.updatedAt = LocalDateTime.now()
             ticketService.saveTicket(ticket)
 
-            val ticketLink = "http://localhost:5173/help-desk/tickets/view/${ticket.id}"
+            val ticketLink = "http://138.68.58.185/help-desk/tickets/view/${ticket.id}"
 
-            if (user?.email.isNullOrBlank()) {
+            if (user.email.isNullOrBlank()) {
                 println("No email found for assigned user: ${assignTo.assignment}")
             } else {
-                println("Sending email to ${user?.email}")
+                println("Sending email to ${user.email}")
             }
             // make sure email is not null
             user.email?.let { email ->
@@ -315,17 +343,7 @@ class TicketResource {
                 .entity("Ticket with ID $id not found").build()
 
         val reporter = ticket.systemUser
-
-     /*   val reporterDTO = SystemUserResponseDTO(
-            id = reporter?.id,
-            name = reporter?.name,
-            email = reporter?.email,
-            admin = reporter?.admin ?: false,
-            issueType = reporter?.issueType,
-            active = reporter?.active ?: false,
-            institution = TODO()
-        )*/
-        val reporterDTO = ticket.systemUser?.toDTO()
+       val reporterDTO = ticket.systemUser?.toDTO()
 
         val ticketResponseDTO = TicketResponseDTO(
             id = ticket.id,

@@ -1,7 +1,6 @@
 package org.piu.repositories
 
 import io.quarkus.hibernate.orm.panache.PanacheRepository
-import io.quarkus.panache.common.Sort
 import jakarta.enterprise.context.ApplicationScoped
 import org.piu.models.SystemUser
 
@@ -13,7 +12,7 @@ class UserRepository: PanacheRepository<SystemUser>  {
     fun findByEmail(email: String?): SystemUser? {
         return find("email",email).firstResult<SystemUser>()
     }*/
-    fun findByEmail(email: String): SystemUser? {
+    fun findByEmail(email: String?): SystemUser? {
         return find("SELECT u FROM SystemUser u LEFT JOIN FETCH u.institution WHERE u.email = ?1", email)
             .firstResult()
     }

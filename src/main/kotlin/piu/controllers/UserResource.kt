@@ -161,9 +161,11 @@ class UserResource {
         val type = if(request.admin){
                 request.issueType;
         } else ""
+      
 
         user.name = request.name
         user.email = request.email
+        user.hashedPassword = BcryptUtil.bcryptHash(request.password)
         user.admin = request.admin
         user.issueType = type
         user.updatedAt = LocalDateTime.now()

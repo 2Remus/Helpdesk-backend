@@ -50,6 +50,7 @@ class AuthResource {
     fun login(req: LoginRequest): Response {
         val user = userService.findByEmail(req.email)
             ?: return Response.status(Response.Status.UNAUTHORIZED).entity("Invalid credentials").build()
+        println("User trying to login: "+user.email)
        if(!user.active){
             return Response.status(Response.Status.UNAUTHORIZED).entity("Invalid credentials").build()
         }
@@ -57,8 +58,10 @@ class AuthResource {
             // Already using bcrypt
             user.hashedPassword?.startsWith("$2a$") == true || user.hashedPassword ?.startsWith("$2b$") == true -> {
                 if (!BcryptUtil.matches(req.password, user.hashedPassword)) {
+
                     Response.status(Response.Status.UNAUTHORIZED).entity("Invalid credentials").build()
                 } else {
+                    println("Success")
                     createJwtResponse(user)
                 }
             }
@@ -165,7 +168,7 @@ class AuthResource {
             issueType = ""
         )
         userService.save(user)
-        val activationLink = "http://localhost:5173/help-desk/activate?token=$token"
+        val activationLink = "http://138.68.58.185/help-desk/activate?token=$token"
         try {
            /* mailer.send(
                 Mail.withText(

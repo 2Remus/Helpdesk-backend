@@ -22,6 +22,10 @@ class EmailService @Inject constructor(
     @Location("ticketStatusUpdate.html")
     private val ticketStatusUpdateTemplate: Template,
 
+    @Inject
+    @Location("resetPassword.html")
+    private val resetPasswordTemplate: Template,
+
 ) {
 
     fun sendActivationEmail(to: String?, name: String, activationLink: String): Response {
@@ -34,7 +38,7 @@ class EmailService @Inject constructor(
             val textBody = "Hello $name,\nActivate your account here: $activationLink"
 
             val mail = Mail.withText(to, "Activate Your Helpdesk Account", textBody)
-                .setHtml(htmlBody).setFrom("boldxpressionvc@gmail.com")
+                .setHtml(htmlBody).setFrom("noreply.vswift.test@gov.vc")
 
             mailer.send(mail)
             Response.ok("Activation email sent to $to").build()
@@ -72,7 +76,7 @@ class EmailService @Inject constructor(
             """.trimIndent()
 
             val mail = Mail.withText(to, "New Ticket Assigned", textBody)
-                .setHtml(htmlBody).setFrom("boldxpressionvc@gmail.com")
+                .setHtml(htmlBody).setFrom("noreply.vswift.test@gov.vc")
 
             mailer.send(mail)
             Response.ok("Ticket assignment email sent to $to").build()
@@ -111,12 +115,32 @@ class EmailService @Inject constructor(
             """.trimIndent()
 
             val mail = Mail.withText(to, "Ticket Status Update", textBody)
-                .setHtml(htmlBody).setFrom("boldxpressionvc@gmail.com")
+                .setHtml(htmlBody).setFrom("noreply.vswift.test@gov.vc")
 
             mailer.send(mail)
             Response.ok("Ticket status update email sent to $to").build()
         } catch (e: Exception) {
             Response.serverError().entity("Could not send ticket update email").build()
+        }
+    }
+
+
+    fun sendResetPasswordEmail(to: String?, name: String, resetLink: String): Response {
+        return try {
+            val htmlBody = resetPasswordTemplate
+                .data("name", name)
+                .data("resetLink", resetLink)
+                .render()
+
+            val textBody = "Hello $name,\nReset your account here: $resetLink"
+
+            val mail = Mail.withText(to, "Reset Your VSWIFT Support desk Password Account", textBody)
+                .setHtml(htmlBody).setFrom("noreply.vswift.test@gov.vc")
+
+            mailer.send(mail)
+            Response.ok("Reset email sent to $to").build()
+        } catch (e: Exception) {
+            Response.serverError().entity("Could not send Reset email").build()
         }
     }
 }

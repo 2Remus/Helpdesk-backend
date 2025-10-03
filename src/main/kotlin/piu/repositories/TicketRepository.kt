@@ -28,9 +28,9 @@ class TicketRepository : PanacheRepository<Ticket>{
     }
 
 
-    fun findAvailableUsers(): List<SystemUser> {
-        return find(
-            "SELECT u FROM SystemUser u LEFT JOIN FETCH u.institution WHERE u.admin = true AND u.active = true"
-        ).list()
+    fun findTicketsAssignedToUser(user: String?): List<Ticket> {
+        return find("assignedTo", user).list()
     }
+
+
 }

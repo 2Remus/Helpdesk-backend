@@ -36,6 +36,11 @@ class TicketService {
         return ticketRepository.findByUserIssueType(issueType)
     }
 
+    fun findTicketsAssignedToUser(user: String?): List<Ticket>{
+        return ticketRepository.findTicketsAssignedToUser(user)
+    }
+
+
     fun saveTicket(ticket: Ticket){
         return ticketRepository.persist(ticket)
     }

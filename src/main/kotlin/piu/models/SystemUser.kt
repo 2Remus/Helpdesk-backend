@@ -12,6 +12,7 @@ import jakarta.persistence.Lob
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.OneToMany
 import piu.models.Institution
+import piu.models.PasswordResetToken
 import piu.models.SystemUserResponseDTO
 import piu.models.TicketAssignment
 import piu.models.UserSignature
@@ -67,4 +68,7 @@ data class SystemUser(
     @OneToMany(mappedBy = "systemUser", cascade = [CascadeType.ALL], orphanRemoval = true)
     var userSignatures: List<UserSignature> = mutableListOf(),
 
+
+    @OneToMany(mappedBy = "systemUser", cascade = [CascadeType.ALL], orphanRemoval = true)
+    var passwordResetToken: List<PasswordResetToken> = mutableListOf(),
     )
