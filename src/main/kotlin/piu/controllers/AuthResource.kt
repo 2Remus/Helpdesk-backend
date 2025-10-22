@@ -31,6 +31,7 @@ import jakarta.transaction.Transactional
 import jakarta.ws.rs.PathParam
 import piu.models.RegisterRequest
 import piu.services.EmailService
+import piu.services.UserRolesAssignedService
 import java.util.UUID
 
 @Path("/api")
@@ -42,6 +43,8 @@ class AuthResource {
     @Inject
     lateinit var emailService: EmailService
 
+    @Inject
+    lateinit var userRolesAssignedService: UserRolesAssignedService
 
     @POST
     @Path("/login")
@@ -123,6 +126,11 @@ class AuthResource {
         val now = Date()
         val expiry = Date(now.time + 1000 * 60 * 60 * 6) // 6 hours
 
+        val assignedRoles = userRolesAssignedService.findRolesByUserId(user.id)
+        val roleNames = assignedRoles.mapNotNull { it.userRole?.name?.lowercase() }
+        println("Roles $roleNames")
+        val permissions = assignedRoles.flatMap { it.userRole?.userPermissions!!.mapNotNull { p -> p.permission?.lowercase() } }
+
         val claims = JWTClaimsSet.Builder()
             .issuer("cardtp")
             .subject(user.email)
@@ -131,7 +139,9 @@ class AuthResource {
             .claim("id", user.id)
             .claim("email", user.email)
             .claim("admin", user.admin)
-            .claim("groups", if (user.admin) listOf("admin") else listOf("user"))
+            .claim("groups", roleNames)
+            .claim("permissions", permissions)
+           //.claim("groups", if (user.admin) listOf("admin") else listOf("user"))
             .build()
 
         val signer = RSASSASigner(loadPrivateKey())
@@ -168,7 +178,7 @@ class AuthResource {
             issueType = ""
         )
         userService.save(user)
-        val activationLink = "http://138.68.58.185/help-desk/activate?token=$token"
+        val activationLink = "http://localhost/help-desk/activate?token=$token"
         try {
            /* mailer.send(
                 Mail.withText(
@@ -216,6 +226,8 @@ class AuthResource {
 
         return Response.ok("Account activated. You may now log in.").build()
     }
+
+
 
 
 

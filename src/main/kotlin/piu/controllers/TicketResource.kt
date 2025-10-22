@@ -206,7 +206,7 @@ class TicketResource {
 
         ticketService.saveTicket(ticket)
 
-        val ticketLink = "http://138.68.58.185/help-desk/tickets/view/${ticket.id}"
+        val ticketLink = "http://localhost/help-desk/tickets/view/${ticket.id}"
 
         val ticketOwner = ticket.systemUser;
         if (ticketOwner?.email.isNullOrBlank()) {
@@ -297,7 +297,7 @@ class TicketResource {
             ticket.updatedAt = LocalDateTime.now()
             ticketService.saveTicket(ticket)
 
-            val ticketLink = "http://138.68.58.185/help-desk/tickets/view/${ticket.id}"
+            val ticketLink = "http://localhost/help-desk/tickets/view/${ticket.id}"
 
             if (user.email.isNullOrBlank()) {
                 println("No email found for assigned user: ${assignTo.assignment}")

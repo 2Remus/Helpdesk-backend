@@ -61,14 +61,14 @@ data class SystemUser(
     @OneToMany(mappedBy = "assignedUser", cascade = [CascadeType.ALL], orphanRemoval = true)
     var assignedTickets: List<TicketAssignment> = mutableListOf(),
 
-
     @Column(name = "image", columnDefinition = "bytea")
     var image: ByteArray? = null,
 
     @OneToMany(mappedBy = "systemUser", cascade = [CascadeType.ALL], orphanRemoval = true)
     var userSignatures: List<UserSignature> = mutableListOf(),
 
-
     @OneToMany(mappedBy = "systemUser", cascade = [CascadeType.ALL], orphanRemoval = true)
     var passwordResetToken: List<PasswordResetToken> = mutableListOf(),
+
+
     )

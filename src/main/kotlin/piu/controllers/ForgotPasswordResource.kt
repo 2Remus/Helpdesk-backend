@@ -54,7 +54,7 @@ class ForgotPasswordResource {
                 expiryDate = LocalDateTime.now().plusHours(1)
             )
             passwordTokenService.saveResetToken(passwordResetToken)
-            val resetLink = "http://138.68.58.185/help-desk/reset-password?token=$token"
+            val resetLink = "http://localhost/help-desk/reset-password?token=$token"
             try {
                 emailService.sendResetPasswordEmail(
                     to = user.email,

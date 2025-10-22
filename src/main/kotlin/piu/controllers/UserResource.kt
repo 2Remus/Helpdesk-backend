@@ -79,7 +79,6 @@ class UserResource {
 
         val newBcrypt = BcryptUtil.bcryptHash(dto.password)
       // val selectedInstitution = institutionService.findByName(dto.institution)
-        println("Institution from DTO "+dto.institution)
         val user = SystemUser()
         user.email = dto.email
         user.name = dto.name
