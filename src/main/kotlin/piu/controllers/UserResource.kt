@@ -157,16 +157,13 @@ class UserResource {
             ?: return Response.status(Response.Status.NOT_FOUND)
                 .entity("User with id $id not found").build()
 
-        val type = if(request.admin){
-                request.issueType;
-        } else ""
       
-
+        val oldPassword = user.hashedPassword;
         user.name = request.name
         user.email = request.email
-        user.hashedPassword = BcryptUtil.bcryptHash(request.password)
+       // user.hashedPassword = BcryptUtil.bcryptHash(request.password)
         user.admin = request.admin
-        user.issueType = type
+        user.issueType =  request.issueType;
         user.updatedAt = LocalDateTime.now()
 
         user.institution = if (request.institution.isNotBlank()) {
@@ -174,7 +171,14 @@ class UserResource {
         } else {
             null
         }
-
+        // ✅ Only update password if provided
+        if (!request.password.isNullOrBlank()) {
+            println("Password provided — updating password.")
+            user.hashedPassword = BcryptUtil.bcryptHash(request.password)
+        } else {
+            println("No password provided — keeping existing password.")
+            // Do nothing; keep existing password
+        }
         userService.updateUser(user)
         return Response.status(Response.Status.OK).build()
 

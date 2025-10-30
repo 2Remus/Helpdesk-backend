@@ -26,7 +26,7 @@ class UserRolesAssignedRepository: PanacheRepository<UserRolesAssigned> {
     }
 
 
-    fun deleteAllUserAssignments(usid: Long){
+    fun deleteAllUserAssignments(usid: Long?){
             delete("systemUser.id",usid)
     }
 

@@ -31,6 +31,7 @@ import jakarta.transaction.Transactional
 import jakarta.ws.rs.PathParam
 import piu.models.RegisterRequest
 import piu.services.EmailService
+import piu.services.UserRoleService
 import piu.services.UserRolesAssignedService
 import java.util.UUID
 
@@ -46,6 +47,8 @@ class AuthResource {
     @Inject
     lateinit var userRolesAssignedService: UserRolesAssignedService
 
+    @Inject
+    lateinit var userRoleService: UserRoleService
     @POST
     @Path("/login")
     @Produces(MediaType.APPLICATION_JSON)
@@ -128,8 +131,9 @@ class AuthResource {
 
         val assignedRoles = userRolesAssignedService.findRolesByUserId(user.id)
         val roleNames = assignedRoles.mapNotNull { it.userRole?.name?.lowercase() }
-        println("Roles $roleNames")
-        val permissions = assignedRoles.flatMap { it.userRole?.userPermissions!!.mapNotNull { p -> p.permission?.lowercase() } }
+        println("groups $roleNames")
+       // val permissions = assignedRoles.flatMap { it.userRole?.userPermissions!!.mapNotNull { p -> p.permission?.lowercase() } }
+        val permissions = assignedRoles.flatMap { it.userRole?.userRolePermissions!!.mapNotNull { p -> p.userPermission?.permission?.lowercase() } }
 
         val claims = JWTClaimsSet.Builder()
             .issuer("cardtp")
@@ -141,7 +145,6 @@ class AuthResource {
             .claim("admin", user.admin)
             .claim("groups", roleNames)
             .claim("permissions", permissions)
-           //.claim("groups", if (user.admin) listOf("admin") else listOf("user"))
             .build()
 
         val signer = RSASSASigner(loadPrivateKey())
@@ -180,13 +183,7 @@ class AuthResource {
         userService.save(user)
         val activationLink = "http://localhost/help-desk/activate?token=$token"
         try {
-           /* mailer.send(
-                Mail.withText(
-                    user.email,
-                    "Activate Your Helpdesk Account",
-                    "Click the link to activate your account: $activationLink"
-                ).setFrom("boldxpressionvc@gmail.com")
-            )*/
+
             emailService.sendActivationEmail(
                 to = user.email,
                 name = user.name,
@@ -223,6 +220,10 @@ class AuthResource {
         user.active = true
         user.activationToken = null
         userService.updateUser(user)
+        //assign regular role upon activation
+        val userRole = userRoleService.findOrCreateUserRole()
+        userRolesAssignedService.assignRole(user.id,userRole.id)
+
 
         return Response.ok("Account activated. You may now log in.").build()
     }

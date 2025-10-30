@@ -20,6 +20,7 @@ import piu.DTO.UserRoleRequest
 import piu.DTO.toDTO
 import piu.models.UserRole
 import piu.services.UserPermissionService
+import piu.services.UserRolePermissionService
 import piu.services.UserRoleService
 import piu.services.UserRolesAssignedService
 import java.time.LocalDateTime
@@ -38,6 +39,9 @@ class UserRoleResource {
 
     @Inject
     lateinit var userPermissionService: UserPermissionService
+
+    @Inject
+    lateinit var userRolePermissionService: UserRolePermissionService
 
 
     @Inject
@@ -119,9 +123,7 @@ class UserRoleResource {
             createdAt = LocalDateTime.now()
         )
         userRoleService.saveUserRole(userRole)
-
-        userPermissionService.attachPermissionsRoles(userRole.id,request.permissionIds)
-
+        userRolePermissionService.attachPermissionsToRole(userRole,request.permissionIds)
         return Response.status(Response.Status.CREATED).build()
 
     }
@@ -146,6 +148,28 @@ class UserRoleResource {
         userRole.updatedAt = LocalDateTime.now()
 
         userRoleService.saveUserRole(userRole)
+        return Response.status(Response.Status.OK).build()
+
+    }
+    @PUT
+    @Path("/user-roles/update/{id}")
+    @RolesAllowed("admin" )
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @Transactional
+    fun updateUserRoleAndPermissions(
+        @PathParam("id") id: Long,
+        request: UserRolePermissionRequest
+    ): Response {
+        val userRole = userRoleService.findById(id) ?: return Response.status(Response.Status.NOT_FOUND)
+            .entity("User role with id $id not found").build()
+
+        userRole.name = request.name
+        userRole.description = request.description
+        userRole.updatedAt = LocalDateTime.now()
+        userRoleService.saveUserRole(userRole)
+        userRolePermissionService.attachPermissionsToRole(userRole,request.permissionIds)
+
         return Response.status(Response.Status.OK).build()
 
     }

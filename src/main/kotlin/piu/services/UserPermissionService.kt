@@ -5,6 +5,7 @@ import jakarta.enterprise.context.ApplicationScoped
 import jakarta.inject.Inject
 import jakarta.transaction.Transactional
 import piu.models.UserPermission
+import piu.models.UserRole
 import piu.repositories.UserPermissionRepository
 import piu.repositories.UserRoleRepository
 import java.time.LocalDateTime
@@ -18,6 +19,8 @@ class UserPermissionService {
     @Inject
     lateinit var userRoleRepository: UserRoleRepository
 
+    @Inject
+    lateinit var userRolesAssignedService: UserRolesAssignedService
 
     fun findAll(): List<UserPermission>{
         return userPermissionRepository.list("active = true",Sort.ascending("permission"))
@@ -39,18 +42,20 @@ class UserPermissionService {
 
 
     @Transactional
-    fun attachPermissionsRoles(roleId: Long?, permissionIds: List<Long>) {
-        val userRole = userRoleRepository.findById(roleId)
-            ?: throw IllegalArgumentException("Role not found")
+    fun attachPermissionsRoles(userRole: UserRole, permissionIds: List<Long>) {
+       /* val userRole = userRoleRepository.findById(roleId)
+            ?: throw IllegalArgumentException("Role not found")*/
         // Delete existing assignments
-        deleteAllRolePermissions(roleId)
-
+      // deleteAllRolePermissions(userRole.id)
+        userPermissionRepository.delete("userRole.id", userRole.id)
+        userRolesAssignedService
         // Add new assignments
         for (permissionId in permissionIds) {
-            val role = userRoleRepository.findById(roleId)
-                ?: continue
+            println("Permission individual id $permissionId")
             val permission = userPermissionRepository.findById(permissionId)
-            permission.userRole = role
+            println("Permission  $permission")
+
+         //   permission.userRole = userRole
             permission.updatedAt = LocalDateTime.now()
 
             userPermissionRepository.persist(permission)

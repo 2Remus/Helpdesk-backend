@@ -19,6 +19,7 @@ import piu.DTO.UserPermissionRequest
 import piu.DTO.toDTO
 import piu.models.UserPermission
 import piu.services.UserPermissionService
+import piu.services.UserRolePermissionService
 import piu.services.UserRoleService
 import java.time.LocalDateTime
 
@@ -35,6 +36,9 @@ class UserPermissionResource {
 
     @Inject
     lateinit var userRoleService: UserRoleService
+
+    @Inject
+    lateinit var userRolePermissionService: UserRolePermissionService
     @GET
     @Path("/user-permissions")
 
@@ -46,7 +50,7 @@ class UserPermissionResource {
         val dtos = userPermissions.map { it.toDTO() }
         return Response.ok(dtos).build()
     }
-
+/*
     @GET
     @Path("/user-permissions/role/{id}")
 
@@ -56,6 +60,18 @@ class UserPermissionResource {
     fun findPermissionsByRole(@PathParam("id") id: Long): Response {
         val userPermissions = userPermissionService.findByRoleId(id)
         val dtos = userPermissions.map { it.toDTO() }
+        return Response.ok(dtos).build()
+    }
+*/
+    @GET
+    @Path("/user-permissions/role/{id}")
+
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @Transactional // Make sure the session is open while mapping
+    fun findPermissionsByRole(@PathParam("id") id: Long): Response {
+        val userRolePermissions = userRolePermissionService.findByRoleId(id)
+        val dtos = userRolePermissions.map { it.toDTO() }
         return Response.ok(dtos).build()
     }
 
@@ -83,11 +99,11 @@ class UserPermissionResource {
             description = request.description,
             createdAt = LocalDateTime.now()
         )
-        userPermission.userRole = if (request.userRole.isNotBlank()) {
+     /*   userPermission.userRole = if (request.userRole.isNotBlank()) {
             userRoleService.findByName(request.userRole)
         } else {
             null
-        }
+        }*/
 
 
 

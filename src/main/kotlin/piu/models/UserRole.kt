@@ -24,5 +24,5 @@ data class UserRole(
     var active: Boolean? = true,
 
     @OneToMany(mappedBy = "userRole", cascade = [CascadeType.ALL], orphanRemoval = true,fetch = FetchType.LAZY)
-    var userPermissions: List<UserPermission> = mutableListOf(),
+    var userRolePermissions: List<UserRolePermission> = mutableListOf(),
 )

@@ -38,7 +38,7 @@ class UserRolesAssignedService {
         userRolesAssignedRepository.persist(userRolesAssigned)
     }
 
-    fun deleteAllUserAssignments(usid: Long){
+    fun deleteAllUserAssignments(usid: Long?){
         userRolesAssignedRepository.deleteAllUserAssignments(usid)
     }
 
@@ -63,6 +63,24 @@ class UserRolesAssignedService {
             )
             userRolesAssignedService.saveUserAssignment(assigned)
         }
+    }
+
+    @Transactional
+    fun assignRole(userId: Long?, roleId: Long?) {
+        val user = userService.findById(userId)
+            ?: throw IllegalArgumentException("User not found")
+        // Delete existing assignments
+        deleteAllUserAssignments(userId)
+
+        // Add new assignments
+            val role = userRoleService.findById(roleId)
+            val assigned = UserRolesAssigned(
+                systemUser = user,
+                userRole = role,
+                createdAt = LocalDateTime.now()
+            )
+            userRolesAssignedService.saveUserAssignment(assigned)
+
     }
 
 
