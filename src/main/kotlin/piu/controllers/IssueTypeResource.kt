@@ -38,7 +38,6 @@ class IssueTypeResource {
 
     @GET
     @Path("/issue-types")
-
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     @Transactional // Make sure the session is open while mapping
@@ -54,7 +53,7 @@ class IssueTypeResource {
     @Path("/issue-types/create")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    @RolesAllowed("admin")
+    @RolesAllowed("admin","create issue type")
     @Transactional
     fun saveIssueType(request: IssueTypeRequest): Response{
 
@@ -83,7 +82,7 @@ class IssueTypeResource {
 
     @DELETE
     @Path("/issue-types/{issueTypeId}")
-    @RolesAllowed("admin" )
+    @RolesAllowed("admin","delete issue type" )
     @Produces(MediaType.APPLICATION_JSON)
     @Transactional
     fun deleteIssueType(@PathParam("issueTypeId") issueTypeId: Long): Response {
@@ -98,7 +97,7 @@ class IssueTypeResource {
 
     @PUT
     @Path("/issue-types/edit/{id}")
-    @RolesAllowed("admin" )
+    @RolesAllowed("admin","update issue type" )
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     @Transactional
@@ -117,5 +116,23 @@ class IssueTypeResource {
         issueTypeService.saveIssueType(issueType)
         return Response.status(Response.Status.OK).build()
 
+    }
+
+    @GET
+    @RolesAllowed("admin","update issue type" )
+    @Path("/issue-types/edit-form/{id}")
+    fun getById(@PathParam("id") id: Long): Response {
+        val issueType = issueTypeService.findById(id)
+        return if (issueType != null) Response.ok(issueType).build()
+        else Response.status(Response.Status.NOT_FOUND).build()
+    }
+
+    @GET
+    @RolesAllowed("admin","update issue type" )
+    @Path("/issue-types/issue-type/{id}")
+    fun getIssueTypeById(@PathParam("id") id: Long): Response {
+        val issueType = issueTypeService.findById(id)
+        return if (issueType != null) Response.ok(issueType).build()
+        else Response.status(Response.Status.NOT_FOUND).build()
     }
 }

@@ -94,4 +94,14 @@ class TicketStatusResource {
         return Response.status(Response.Status.NO_CONTENT).build()
     }
 
+
+    @GET
+    @RolesAllowed("admin","update ticket status" )
+    @Path("/ticket-statuses/edit/{id}")
+    fun getById(@PathParam("id") id: Long): Response {
+        val ticketStatus = ticketStatusService.findById(id)
+        return if (ticketStatus != null) Response.ok(ticketStatus).build()
+        else Response.status(Response.Status.NOT_FOUND).build()
+    }
+
 }

@@ -62,7 +62,7 @@ class TicketResource {
 
     @GET
     @Path("/tickets")
-    @RolesAllowed("admin" )
+    @RolesAllowed("admin","view tickets")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     @Transactional // Make sure the session is open while mapping
@@ -74,7 +74,7 @@ class TicketResource {
 
     @GET
     @Path("/tickets-by-issues")
-    @RolesAllowed("admin" )
+   // @RolesAllowed("view categorized tickets" )
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     @Transactional // Make sure the session is open while mapping
@@ -154,7 +154,7 @@ class TicketResource {
     @Path("/tickets/create")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    @RolesAllowed("admin","user")
+    @RolesAllowed("admin","user","create ticket")
     @Transactional
     fun saveTicket(request: TicketRequest): Response{
 
@@ -189,7 +189,7 @@ class TicketResource {
 
     @PUT
     @Path("/tickets/status/{id}")
-    @RolesAllowed("admin")
+    @RolesAllowed("admin","update ticket status")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     @Transactional
@@ -206,7 +206,7 @@ class TicketResource {
 
         ticketService.saveTicket(ticket)
 
-        val ticketLink = "http://localhost/help-desk/tickets/view/${ticket.id}"
+        val ticketLink = "http://10.181.1.64/tickets/view/${ticket.id}"
 
         val ticketOwner = ticket.systemUser;
         if (ticketOwner?.email.isNullOrBlank()) {
@@ -297,7 +297,7 @@ class TicketResource {
             ticket.updatedAt = LocalDateTime.now()
             ticketService.saveTicket(ticket)
 
-            val ticketLink = "http://localhost/help-desk/tickets/view/${ticket.id}"
+            val ticketLink = "http://10.181.1.64/tickets/view/${ticket.id}"
 
             if (user.email.isNullOrBlank()) {
                 println("No email found for assigned user: ${assignTo.assignment}")
@@ -333,7 +333,7 @@ class TicketResource {
 
     @GET
     @Path("/tickets/view/{id}")
-    @RolesAllowed("user", "admin")
+    @RolesAllowed("view ticket", "admin")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     @Transactional

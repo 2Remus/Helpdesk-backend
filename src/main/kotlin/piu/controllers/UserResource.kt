@@ -45,11 +45,10 @@ class UserResource {
     @Inject
     lateinit var institutionService: InstitutionService
 
-
     @GET
     @Path("/users")
-   // @RolesAllowed("admin" )
-    @PermitAll
+    @RolesAllowed("admin","view users" )
+  //  @PermitAll
     @Produces(MediaType.APPLICATION_JSON)
     fun findAll(): Response{
             val users = userService.findAll()
@@ -60,7 +59,7 @@ class UserResource {
 
     @GET
     @Path("/available-users")
-    @RolesAllowed("admin" )
+    @RolesAllowed("admin","view available users" )
     @Produces(MediaType.APPLICATION_JSON)
     fun findAdminUsers(): Response{
         val users = userService.findAvailableUsers()

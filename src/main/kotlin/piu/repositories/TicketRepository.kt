@@ -18,7 +18,7 @@ class TicketRepository : PanacheRepository<Ticket>{
     }
 
     fun findByUserEmail(email: String?): List<Ticket> {
-        return find("systemUser.email", email).list()
+        return find("systemUser.email=?1 order by createdAt desc", email).list()
     }
 
 

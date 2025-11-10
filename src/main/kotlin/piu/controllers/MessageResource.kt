@@ -70,7 +70,7 @@ class MessageResource {
 
     @GET
     @Path("/tickets/{ticketId}/messages")
-    @RolesAllowed("admin","user")
+    @RolesAllowed("admin","view messages")
     @Produces(MediaType.APPLICATION_JSON)
     @Transactional
     fun findMessagesByTicketId(@PathParam("ticketId") ticketId: Long): Response {
@@ -81,7 +81,7 @@ class MessageResource {
 
 
     @POST
-    @RolesAllowed("admin","user")
+    @RolesAllowed("admin","create message")
 
     @Path("/tickets/{ticketId}/message")
     @Consumes(MediaType.APPLICATION_JSON)

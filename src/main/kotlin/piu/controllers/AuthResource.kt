@@ -181,7 +181,7 @@ class AuthResource {
             issueType = ""
         )
         userService.save(user)
-        val activationLink = "http://localhost/help-desk/activate?token=$token"
+        val activationLink = "http://10.181.1.64/activate?token=$token"
         try {
 
             emailService.sendActivationEmail(
