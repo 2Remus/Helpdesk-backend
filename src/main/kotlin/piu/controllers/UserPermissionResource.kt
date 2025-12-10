@@ -79,7 +79,7 @@ class UserPermissionResource {
     @Path("/user-permissions/create")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    @RolesAllowed("admin")
+    @RolesAllowed("admin","create permission")
     @Transactional
     fun saveUserPermission(request: UserPermissionRequest): Response{
 
@@ -99,15 +99,7 @@ class UserPermissionResource {
             description = request.description,
             createdAt = LocalDateTime.now()
         )
-     /*   userPermission.userRole = if (request.userRole.isNotBlank()) {
-            userRoleService.findByName(request.userRole)
-        } else {
-            null
-        }*/
-
-
-
-        userPermissionService.saveUserPermission(userPermission)
+            userPermissionService.saveUserPermission(userPermission)
         return Response.status(Response.Status.CREATED).build()
 
     }
@@ -117,7 +109,7 @@ class UserPermissionResource {
 
     @PUT
     @Path("/user-permissions/edit/{id}")
-    @RolesAllowed("admin" )
+    @RolesAllowed("admin","update permission")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     @Transactional
@@ -140,7 +132,7 @@ class UserPermissionResource {
 
     @DELETE
     @Path("/user-permissions/{upid}")
-    @RolesAllowed("admin" )
+    @RolesAllowed("admin","delete permissions" )
     @Produces(MediaType.APPLICATION_JSON)
     @Transactional
     fun deleteUserPermission(@PathParam("upid") upid: Long): Response {

@@ -119,7 +119,7 @@ class IssueTypeResource {
     }
 
     @GET
-    @RolesAllowed("admin","update issue type" )
+    @RolesAllowed("admin","view issue type" )
     @Path("/issue-types/edit-form/{id}")
     fun getById(@PathParam("id") id: Long): Response {
         val issueType = issueTypeService.findById(id)

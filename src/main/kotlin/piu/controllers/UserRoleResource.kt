@@ -1,5 +1,6 @@
 package piu.controllers
 
+import jakarta.annotation.security.PermitAll
 import jakarta.annotation.security.RolesAllowed
 import jakarta.inject.Inject
 import jakarta.transaction.Transactional
@@ -11,6 +12,8 @@ import jakarta.ws.rs.PUT
 import jakarta.ws.rs.Path
 import jakarta.ws.rs.PathParam
 import jakarta.ws.rs.Produces
+import jakarta.ws.rs.core.Context
+import jakarta.ws.rs.core.HttpHeaders
 import jakarta.ws.rs.core.MediaType
 import jakarta.ws.rs.core.Response
 import org.eclipse.microprofile.jwt.JsonWebToken
@@ -59,7 +62,7 @@ class UserRoleResource {
     }
 
     @GET
-    @Path("/user-roles/role/{id}")
+    @Path("/user-roles/{id}")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
 
@@ -74,7 +77,7 @@ class UserRoleResource {
     @Path("/user-roles/create")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    @RolesAllowed("admin")
+    @RolesAllowed("admin", "create user role")
     @Transactional
     fun saveUserRole(request: UserRoleRequest): Response{
 
@@ -103,7 +106,7 @@ class UserRoleResource {
     @Path("/user-roles/add")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    @RolesAllowed("admin")
+    @RolesAllowed("admin","create user role")
     @Transactional
     fun saveUserRoleAndPermission(request: UserRolePermissionRequest): Response{
 
@@ -131,8 +134,8 @@ class UserRoleResource {
 
 
     @PUT
-    @Path("/user-roles/edit/{id}")
-    @RolesAllowed("admin" )
+    @Path("/user-roles/{id}")
+   @RolesAllowed("admin","update user role")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     @Transactional
@@ -151,16 +154,26 @@ class UserRoleResource {
         return Response.status(Response.Status.OK).build()
 
     }
+
+
+
     @PUT
-    @Path("/user-roles/update/{id}")
-    @RolesAllowed("admin" )
+    @Path("/user-roles/{id}/permissions")
+    @RolesAllowed("admin")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     @Transactional
     fun updateUserRoleAndPermissions(
         @PathParam("id") id: Long,
-        request: UserRolePermissionRequest
+        request: UserRolePermissionRequest,
+        @Context requestContext: HttpHeaders
     ): Response {
+           println("Enters method upadteUserRoleAndPermissions")
+        // DEBUG: print incoming Authorization header
+        val authHeader = requestContext.getHeaderString("Authorization")
+        println("DEBUG: Authorization header received: $authHeader")
+        println("CLAIMS: " + jwt.claimNames.toString())
+        println("GROUPS: " + jwt.getClaim<List<String>>("groups"))
         val userRole = userRoleService.findById(id) ?: return Response.status(Response.Status.NOT_FOUND)
             .entity("User role with id $id not found").build()
 
@@ -168,16 +181,17 @@ class UserRoleResource {
         userRole.description = request.description
         userRole.updatedAt = LocalDateTime.now()
         userRoleService.saveUserRole(userRole)
-        userRolePermissionService.attachPermissionsToRole(userRole,request.permissionIds)
+        userRolePermissionService.attachPermissionsToRole(userRole, request.permissionIds)
 
         return Response.status(Response.Status.OK).build()
-
     }
+
+
 
 
     @DELETE
     @Path("/user-roles/{urid}")
-    @RolesAllowed("admin" )
+    @RolesAllowed("admin","delete user role")
     @Produces(MediaType.APPLICATION_JSON)
     @Transactional
     fun deleteUserRole(@PathParam("urid") urid: Long): Response {

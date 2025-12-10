@@ -134,6 +134,11 @@ class AuthResource {
         println("groups $roleNames")
        // val permissions = assignedRoles.flatMap { it.userRole?.userPermissions!!.mapNotNull { p -> p.permission?.lowercase() } }
         val permissions = assignedRoles.flatMap { it.userRole?.userRolePermissions!!.mapNotNull { p -> p.userPermission?.permission?.lowercase() } }
+        println("permissions $permissions")
+        val groups = mutableSetOf<String>()
+        groups.addAll(roleNames)
+        groups.addAll(permissions)
+        println("groups $groups")
 
         val claims = JWTClaimsSet.Builder()
             .issuer("cardtp")
@@ -143,7 +148,7 @@ class AuthResource {
             .claim("id", user.id)
             .claim("email", user.email)
             .claim("admin", user.admin)
-            .claim("groups", roleNames)
+            .claim("groups", groups)
             .claim("permissions", permissions)
             .build()
 
@@ -181,7 +186,7 @@ class AuthResource {
             issueType = ""
         )
         userService.save(user)
-        val activationLink = "http://10.181.1.64/activate?token=$token"
+        val activationLink = "https://vswiftsupport.gov.vc/activate?token=$token"
         try {
 
             emailService.sendActivationEmail(

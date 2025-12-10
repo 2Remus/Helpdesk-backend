@@ -38,7 +38,6 @@ class ForgotPasswordResource {
     @Path("/forgot-password")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-  //  @RolesAllowed("admin","user")
     @Transactional
     fun forgotPassword(request: ForgotPasswordRequest): Response{
 
@@ -54,7 +53,7 @@ class ForgotPasswordResource {
                 expiryDate = LocalDateTime.now().plusHours(1)
             )
             passwordTokenService.saveResetToken(passwordResetToken)
-            val resetLink = "http://10.181.1.64/reset-password?token=$token"
+            val resetLink = "https://vswiftsupport.gov.vc/reset-password?token=$token"
             try {
                 emailService.sendResetPasswordEmail(
                     to = user.email,
@@ -68,8 +67,6 @@ class ForgotPasswordResource {
                 return Response.serverError().entity("Could not send reset email. Please try again.").build()
             }
 
-
-
         return Response.ok("Link sent to email.").build()
 
     }
@@ -79,8 +76,7 @@ class ForgotPasswordResource {
     @Path("/reset-password/{token}")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    //  @RolesAllowed("admin","user")
-     @Transactional
+    @Transactional
     fun resetPassword(@PathParam("token") token: String,request: PasswordResetRequest): Response{
 
         val resetToken = passwordTokenService.verifyResetToken(token)

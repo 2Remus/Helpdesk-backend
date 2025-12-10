@@ -39,7 +39,7 @@ import java.io.InputStream
 class UserResource {
     @Inject
     lateinit var userService: UserService
-      @Inject
+    @Inject
     lateinit var userSignatureService: UserSignatureService
 
     @Inject
@@ -59,7 +59,7 @@ class UserResource {
 
     @GET
     @Path("/available-users")
-    @RolesAllowed("admin","view available users" )
+    @RolesAllowed("admin","view users" )
     @Produces(MediaType.APPLICATION_JSON)
     fun findAdminUsers(): Response{
         val users = userService.findAvailableUsers()
@@ -68,7 +68,7 @@ class UserResource {
     }
 
     @POST
-  //  @RolesAllowed("admin" )
+    @RolesAllowed("admin","create user" )
     @Path("/users/create")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
@@ -113,7 +113,7 @@ class UserResource {
 
     @DELETE
     @Path("/users/change/{userId}")
-    @RolesAllowed("admin" )
+    @RolesAllowed("admin" , "delete user" )
     @Produces(MediaType.APPLICATION_JSON)
     @Transactional
     fun deleteUser(@PathParam("userId") userId: Long): Response {
@@ -130,7 +130,7 @@ class UserResource {
 
     @GET
     @Path("/users/{usId}")
-    @RolesAllowed("admin" )
+    @RolesAllowed("admin" ,"view user" )
     @Produces(MediaType.APPLICATION_JSON)
     fun getById(@PathParam("usId") id: Long): Response {
         val user = userService.findById(id)
@@ -144,7 +144,7 @@ class UserResource {
 
     @PUT
     @Path("/users/edit/{id}")
-    @RolesAllowed("admin" )
+    @RolesAllowed("admin","update user")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     @Transactional
@@ -187,7 +187,7 @@ class UserResource {
 
     @PUT
     @Path("/users/edit/role/{id}")
-    @RolesAllowed("admin")
+    @RolesAllowed("admin" ,"update user")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     @Transactional
@@ -211,7 +211,7 @@ class UserResource {
 
     @PUT
     @Path("/users/edit/activeStatus/{id}")
-    @RolesAllowed("admin")
+    @RolesAllowed("admin" ,"update user")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     @Transactional
@@ -231,48 +231,6 @@ class UserResource {
         return Response.ok(mapOf("message" to "User updated successfully")).build()
     }
 
-
-/*
-    @POST
-    @Path("/upload")
-    @Consumes(MediaType.MULTIPART_FORM_DATA)
-    @Transactional
-    fun uploadImage(
-        @FormParam("userId") userId: Long,
-        @FormParam("file") file: FileUpload
-    ): Response {
-        val user = userService.findById(userId)
-            ?: return Response.status(Response.Status.NOT_FOUND).entity("User not found").build()
-
-        val bytes = file.uploadedFile().toFile().readBytes()
-        user.image = bytes
-        user.updatedAt = LocalDateTime.now()
-
-        userService.save(user)
-
-        return Response.ok("Image uploaded successfully").build()
-    }*/
-
-
-/*
-
-    @PUT
-    @Path("/upload")
-    @Consumes(MediaType.MULTIPART_FORM_DATA)
-    @PermitAll
-    @Transactional
-    fun uploadImage1(form: ImageUploadForm): Response {
-        println("Uploading")
-        val user = userService.findById(form.userId!!)
-            ?: return Response.status(Response.Status.NOT_FOUND).entity("User not found").build()
-
-       val bytes = form.file.readAllBytes()
-        user.image = bytes
-        user.updatedAt = LocalDateTime.now()
-        userService.save(user)
-
-        return Response.ok("Image uploaded successfully").build()
-    }*/
 
 
     @POST

@@ -47,9 +47,10 @@ class TicketResource {
     @Inject
     lateinit var jwt: JsonWebToken
 
+
     @GET
     @Path("/tickets/institution")
-    @RolesAllowed("admin" )
+    @RolesAllowed("admin" ,"view tickets" )
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     @Transactional // Make sure the session is open while mapping
@@ -74,7 +75,7 @@ class TicketResource {
 
     @GET
     @Path("/tickets-by-issues")
-   // @RolesAllowed("view categorized tickets" )
+    @RolesAllowed("view categorized tickets" )
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     @Transactional // Make sure the session is open while mapping
@@ -99,7 +100,7 @@ class TicketResource {
 
     @GET
     @Path("/tickets/my-assigned")
-    @RolesAllowed("admin" )
+    @RolesAllowed("admin" ,"view assigned tickets" )
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     @Transactional // Make sure the session is open while mapping
@@ -154,7 +155,7 @@ class TicketResource {
     @Path("/tickets/create")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    @RolesAllowed("admin","user","create ticket")
+    @RolesAllowed("admin" ,"create ticket")
     @Transactional
     fun saveTicket(request: TicketRequest): Response{
 
@@ -189,7 +190,7 @@ class TicketResource {
 
     @PUT
     @Path("/tickets/status/{id}")
-    @RolesAllowed("admin","update ticket status")
+    @RolesAllowed("admin","update ticket")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     @Transactional
@@ -206,7 +207,7 @@ class TicketResource {
 
         ticketService.saveTicket(ticket)
 
-        val ticketLink = "http://10.181.1.64/tickets/view/${ticket.id}"
+        val ticketLink = "http://vswiftsupporttest.gov.vc/support/tickets/view/${ticket.id}"
 
         val ticketOwner = ticket.systemUser;
         if (ticketOwner?.email.isNullOrBlank()) {
@@ -233,7 +234,7 @@ class TicketResource {
 
     @PUT
     @Path("/tickets/priority/{id}")
-    @RolesAllowed("admin")
+    @RolesAllowed("admin","update ticket")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     @Transactional
@@ -258,7 +259,7 @@ class TicketResource {
 
     @PUT
     @Path("/tickets/assign/{id}")
-    @RolesAllowed("admin")
+    @RolesAllowed("admin", "assign ticket")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     @Transactional
@@ -297,7 +298,7 @@ class TicketResource {
             ticket.updatedAt = LocalDateTime.now()
             ticketService.saveTicket(ticket)
 
-            val ticketLink = "http://10.181.1.64/tickets/view/${ticket.id}"
+            val ticketLink = "http://vswiftsupporttest.gov.vc/support/tickets/view/${ticket.id}"
 
             if (user.email.isNullOrBlank()) {
                 println("No email found for assigned user: ${assignTo.assignment}")
@@ -365,7 +366,7 @@ class TicketResource {
 
     @PUT
     @Path("/tickets/issue-type/{id}")
-    @RolesAllowed("admin")
+    @RolesAllowed("admin" , "update ticket")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     @Transactional

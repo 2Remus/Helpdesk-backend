@@ -45,29 +45,6 @@ class MessageResource {
     }
 
 
-
-/*
-    @GET
-    @Path("/tickets/{ticketId}/messages")
-    @Produces(MediaType.APPLICATION_JSON)
-    @Transactional
-    fun findMessagesByTicketId1(@PathParam("ticketId") ticketId: Long): Response {
-        val messages = messageService.findByTicketId(ticketId)
-        val user = userService.findById(1) // to be replaced with authenticated user when ready
-
-        val dtoList = messages.map {
-            MessageResponseDTO(
-                id = it.id!!,
-                content = it.content,
-                createdAt = it.createdAt,
-                ticketId = it.ticket?.id!!,
-                userId = user?.id
-            )
-        }
-        return Response.ok(dtoList).build()
-    }
-    */
-
     @GET
     @Path("/tickets/{ticketId}/messages")
     @RolesAllowed("admin","view messages")

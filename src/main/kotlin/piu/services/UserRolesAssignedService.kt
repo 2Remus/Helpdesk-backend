@@ -46,7 +46,8 @@ class UserRolesAssignedService {
 
 
     @Transactional
-    fun assignRoles(userId: Long, roleIds: List<Long>) {
+    fun  assignRoles(userId: Long, roleIds: List<Long>) {
+        println("Assign Role")
         val user = userService.findById(userId)
             ?: throw IllegalArgumentException("User not found")
         // Delete existing assignments

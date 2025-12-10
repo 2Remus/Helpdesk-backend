@@ -39,7 +39,7 @@ class UserRolesAssignedResource {
     @Path("/user-roles-assigned/create")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    @RolesAllowed("admin")
+    @RolesAllowed("admin","update user")
     @Transactional
     fun assignUserRole(request: UserRoleAssignedRequest): Response{
         userRolesAssignedService.assignRoles(request.userId,request.roleIds)
@@ -49,7 +49,8 @@ class UserRolesAssignedResource {
 
 
 @GET
-@RolesAllowed("admin")
+@RolesAllowed("admin","view user roles")
+
 @Path("/user/{userId}/roles")
 fun getUserRoles(@PathParam("userId") userId: Long): Response {
 

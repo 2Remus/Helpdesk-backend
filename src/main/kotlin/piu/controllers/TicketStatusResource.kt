@@ -53,7 +53,7 @@ class TicketStatusResource {
     @Path("/ticket-status/create")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    @RolesAllowed("admin")
+    @RolesAllowed("admin" ,"create ticket status")
     @Transactional
     fun saveTicketStatus(request: TicketStatusRequest): Response{
 
@@ -82,7 +82,7 @@ class TicketStatusResource {
 
     @DELETE
     @Path("/ticket-status/{ticketStatusId}")
-    @RolesAllowed("admin" )
+    @RolesAllowed("admin" ,"delete ticket status" )
     @Produces(MediaType.APPLICATION_JSON)
     @Transactional
     fun deleteIssueType(@PathParam("ticketStatusId") ticketStatusId: Long): Response {
