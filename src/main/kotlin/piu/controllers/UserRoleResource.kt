@@ -177,11 +177,11 @@ class UserRoleResource {
         val userRole = userRoleService.findById(id) ?: return Response.status(Response.Status.NOT_FOUND)
             .entity("User role with id $id not found").build()
 
-        userRole.name = request.name
-        userRole.description = request.description
-        userRole.updatedAt = LocalDateTime.now()
-        userRoleService.saveUserRole(userRole)
-        userRolePermissionService.attachPermissionsToRole(userRole, request.permissionIds)
+      //  userRole.name = request.name
+      //  userRole.description = request.description
+     //   userRole.updatedAt = LocalDateTime.now()
+    //    userRoleService.saveUserRole(userRole)
+   //     userRolePermissionService.attachPermissionsToRole(userRole, request.permissionIds)
 
         return Response.status(Response.Status.OK).build()
     }
