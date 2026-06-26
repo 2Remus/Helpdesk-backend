@@ -31,19 +31,18 @@ class InstitutionResource {
     /*get institution list. functional 18-July-2025*/
     @GET
     @Path("/institutions")
-    @RolesAllowed("admin" )
+    @RolesAllowed("admin","view institutions" )
     @Produces(MediaType.APPLICATION_JSON)
     @Transactional // Make sure the session is open while mapping
     fun findAll(): Response {
-        val tickets = institutionService.findAll()
-        val dtos = tickets.map { it.toDTO() }
+        val institutions = institutionService.findAll()
+        val dtos = institutions.map { it.toDTO() }
         return Response.ok(dtos).build()
     }
 
 
     @GET
-    @RolesAllowed("admin" )
-
+    @RolesAllowed("admin", "view institution" )
     @Path("/institutions/{id}")
     fun getById(@PathParam("id") id: Long): Response {
         val institution = institutionService.findById(id)
@@ -62,7 +61,7 @@ class InstitutionResource {
     /*create new institution. functional 18-July-2025*/
     @POST
     @Path("/institutions/create")
-    @RolesAllowed("admin" )
+    @RolesAllowed("admin" ,"create institution" )
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     @Transactional
@@ -81,10 +80,11 @@ class InstitutionResource {
 
     }
 
+
+
     @PUT
     @Path("/institutions/edit/{id}")
-    @RolesAllowed("admin" )
-
+    @RolesAllowed("admin" , "update institution" )
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     @Transactional
@@ -109,8 +109,7 @@ class InstitutionResource {
 
     @DELETE
     @Path("/institutions/{instId}")
-    @RolesAllowed("admin" )
-
+    @RolesAllowed("admin" ,"delete institution" )
     @Produces(MediaType.APPLICATION_JSON)
     @Transactional
     fun deleteInstitution(@PathParam("instId") instId: Long): Response {

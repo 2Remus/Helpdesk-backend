@@ -6,6 +6,8 @@ import piu.models.Institution
 
 @ApplicationScoped
 class InstitutionRepository  : PanacheRepository<Institution>{
-
+    fun findByName(name: String?): Institution? {
+        return find("name", name).firstResult()
+    }
 
 }

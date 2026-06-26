@@ -14,7 +14,7 @@ import jakarta.ws.rs.core.MediaType
 import jakarta.ws.rs.core.Response
 import org.eclipse.angus.activation.MailcapParseException
 import org.jboss.logging.Logger
-import piu.models.EmailRequestDTO
+import piu.DTO.EmailRequestDTO
 
 @Path("/api")
 class MailResource {

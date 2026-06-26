@@ -8,10 +8,14 @@ import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.JoinColumn
+import jakarta.persistence.Lob
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.OneToMany
 import piu.models.Institution
+import piu.models.PasswordResetToken
 import piu.models.SystemUserResponseDTO
+import piu.models.TicketAssignment
+import piu.models.UserSignature
 import java.time.LocalDateTime
 
 @Entity
@@ -19,8 +23,10 @@ data class SystemUser(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     var id: Long? = null,
+
     @Column(nullable = false)
     var name: String = "",
+
     @Column(nullable = false, unique = true, length = 120)
     var email: String? = null,
 
@@ -35,12 +41,34 @@ data class SystemUser(
 
     @Column(nullable = false)
     var createdAt: LocalDateTime = LocalDateTime.now(),
+
     @Column(nullable = true)
     var updatedAt: LocalDateTime? = null,
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "institution_id")
     var institution: Institution ?= null,
 
+    @Column(nullable = false)
+    var active: Boolean = false,
+
+    @Column
+    var activationToken: String? = null,
+
     @OneToMany(mappedBy = "systemUser", cascade = [CascadeType.ALL], orphanRemoval = true)
-    var tickets: List<Ticket> = mutableListOf()
-)
+    var tickets: List<Ticket> = mutableListOf(),
+
+    @OneToMany(mappedBy = "assignedUser", cascade = [CascadeType.ALL], orphanRemoval = true)
+    var assignedTickets: List<TicketAssignment> = mutableListOf(),
+
+    @Column(name = "image", columnDefinition = "bytea")
+    var image: ByteArray? = null,
+
+    @OneToMany(mappedBy = "systemUser", cascade = [CascadeType.ALL], orphanRemoval = true)
+    var userSignatures: List<UserSignature> = mutableListOf(),
+
+    @OneToMany(mappedBy = "systemUser", cascade = [CascadeType.ALL], orphanRemoval = true)
+    var passwordResetToken: List<PasswordResetToken> = mutableListOf(),
+
+
+    )

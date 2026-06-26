@@ -9,8 +9,9 @@ data class SystemUserDTO(
     val email: String?,
     val password: String,
     val admin: Boolean,
+    val active: Boolean,
     val issueType: String?,
-    val institutionId: Long?
+    val institution: String?
 
 
 )
@@ -20,20 +21,17 @@ fun SystemUser.toDTO(): SystemUserResponseDTO {
         name = this.name,
         email = this.email,
         admin = this.admin,
+        active = this.active,
         issueType = this.issueType,
-        institutionId = this.institution?.id
+        institution = this.institution?.let { InstitutionDTO(
+            it.id!!,
+            it.name,
+            address = it.address,
+            email = it.email,
+            phoneNumber = it.phoneNumber
+        ) }
+
+
         )
 }
-/*
-fun toDTO(user: SystemUser): SystemUserDTO {
-    return SystemUserDTO(
-        id = user.id!!,
-        name = user.name,
-        email = user.email,
-        isAdmin = user.isAdmin,
-        issueType = user.issueType,
-        password = "",
-        institutionId = user.institution?.id
-    )
-}*/
 

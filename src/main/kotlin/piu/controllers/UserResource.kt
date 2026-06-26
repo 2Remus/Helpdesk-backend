@@ -1,13 +1,15 @@
 package org.piu.controllers
 
 import io.quarkus.elytron.security.common.BcryptUtil
+import jakarta.annotation.security.PermitAll
 import jakarta.annotation.security.RolesAllowed
 import jakarta.inject.Inject
 import jakarta.transaction.Transactional
 import jakarta.ws.rs.Consumes
 import jakarta.ws.rs.DELETE
+import jakarta.ws.rs.FormParam
 import jakarta.ws.rs.GET
-import jakarta.ws.rs.PATCH
+import jakarta.ws.rs.NotFoundException
 import jakarta.ws.rs.POST
 import jakarta.ws.rs.PUT
 import jakarta.ws.rs.Path
@@ -17,23 +19,36 @@ import jakarta.ws.rs.core.MediaType
 import jakarta.ws.rs.core.Response
 import org.piu.models.SystemUser
 import org.piu.services.UserService
-import piu.models.InstitutionRequest
 import piu.models.SystemUserDTO
 import piu.models.SystemUserResponseDTO
 import piu.models.UserRequest
 import piu.models.UserRoleRequest
+import piu.models.UserStatusRequest
 import piu.models.toDTO
 import java.time.LocalDateTime
+import org.jboss.resteasy.annotations.providers.multipart.MultipartForm
+import org.jboss.resteasy.annotations.providers.multipart.PartType
+import piu.models.UserSignature
+import piu.services.InstitutionService
+import piu.services.UserSignatureService
+import java.io.ByteArrayInputStream
+import java.io.InputStream
+
 
 @Path("/api")
 class UserResource {
     @Inject
     lateinit var userService: UserService
+    @Inject
+    lateinit var userSignatureService: UserSignatureService
 
+    @Inject
+    lateinit var institutionService: InstitutionService
 
     @GET
     @Path("/users")
-    @RolesAllowed("admin" )
+    @RolesAllowed("admin","view users" )
+  //  @PermitAll
     @Produces(MediaType.APPLICATION_JSON)
     fun findAll(): Response{
             val users = userService.findAll()
@@ -41,26 +56,44 @@ class UserResource {
         return Response.ok(userdtos).build()
     }
 
+
+    @GET
+    @Path("/available-users")
+    @RolesAllowed("admin","view users" )
+    @Produces(MediaType.APPLICATION_JSON)
+    fun findAdminUsers(): Response{
+        val users = userService.findAvailableUsers()
+        val userdtos = users.map { it.toDTO() }
+        return Response.ok(userdtos).build()
+    }
+
     @POST
-    @RolesAllowed("admin" )
+    @RolesAllowed("admin","create user" )
     @Path("/users/create")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     @Transactional
-    fun createUser(
-        @PathParam("ticketId") ticketId: Long,
-        dto: SystemUserDTO
+    fun createUser(dto: SystemUserDTO
     ): Response {
 
         val newBcrypt = BcryptUtil.bcryptHash(dto.password)
-
+      // val selectedInstitution = institutionService.findByName(dto.institution)
         val user = SystemUser()
         user.email = dto.email
         user.name = dto.name
         user.admin = dto.admin
         user.hashedPassword  = newBcrypt
         user.createdAt = LocalDateTime.now()
-        user.issueType = dto.issueType
+        user.issueType = if(dto.admin){
+            dto.issueType;
+        } else ""
+
+        user.institution = if (!dto.institution.isNullOrBlank()) {
+            institutionService.findByName(dto.institution)
+        } else {
+            null
+        }
+
 
         userService.save(user)
         // Map to DTO before returning
@@ -70,7 +103,8 @@ class UserResource {
            email = user.email,
            issueType = user.issueType,
            admin = user.admin,
-           institutionId = user.institution?.id
+           active = user.active,
+           institution = user.institution?.toDTO()
 
        )
        return Response.status(Response.Status.CREATED).entity(userResponseDTO).build()
@@ -78,8 +112,8 @@ class UserResource {
 
 
     @DELETE
-    @Path("/users/{userId}")
-    @RolesAllowed("user" )
+    @Path("/users/change/{userId}")
+    @RolesAllowed("admin" , "delete user" )
     @Produces(MediaType.APPLICATION_JSON)
     @Transactional
     fun deleteUser(@PathParam("userId") userId: Long): Response {
@@ -94,10 +128,9 @@ class UserResource {
 
 
 
-
     @GET
     @Path("/users/{usId}")
-    @RolesAllowed("admin" )
+    @RolesAllowed("admin" ,"view user" )
     @Produces(MediaType.APPLICATION_JSON)
     fun getById(@PathParam("usId") id: Long): Response {
         val user = userService.findById(id)
@@ -111,7 +144,7 @@ class UserResource {
 
     @PUT
     @Path("/users/edit/{id}")
-    @RolesAllowed("admin" )
+    @RolesAllowed("admin","update user")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     @Transactional
@@ -123,12 +156,28 @@ class UserResource {
             ?: return Response.status(Response.Status.NOT_FOUND)
                 .entity("User with id $id not found").build()
 
+      
+        val oldPassword = user.hashedPassword;
         user.name = request.name
         user.email = request.email
+       // user.hashedPassword = BcryptUtil.bcryptHash(request.password)
         user.admin = request.admin
-        user.issueType = request.issueType
+        user.issueType =  request.issueType;
         user.updatedAt = LocalDateTime.now()
 
+        user.institution = if (request.institution.isNotBlank()) {
+            institutionService.findByName(request.institution)
+        } else {
+            null
+        }
+        // ✅ Only update password if provided
+        if (!request.password.isNullOrBlank()) {
+            println("Password provided — updating password.")
+            user.hashedPassword = BcryptUtil.bcryptHash(request.password)
+        } else {
+            println("No password provided — keeping existing password.")
+            // Do nothing; keep existing password
+        }
         userService.updateUser(user)
         return Response.status(Response.Status.OK).build()
 
@@ -138,7 +187,7 @@ class UserResource {
 
     @PUT
     @Path("/users/edit/role/{id}")
-    @RolesAllowed("admin")
+    @RolesAllowed("admin" ,"update user")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     @Transactional
@@ -157,6 +206,148 @@ class UserResource {
         userService.save(user)
 
         return Response.ok(mapOf("message" to "User updated successfully")).build()
+    }
+
+
+    @PUT
+    @Path("/users/edit/activeStatus/{id}")
+    @RolesAllowed("admin" ,"update user")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @Transactional
+    fun updateUserActiveStatus(
+        @PathParam("id") id: Long,
+        request: UserStatusRequest
+    ): Response {
+        val user = userService.findById(id)
+            ?: return Response.status(Response.Status.NOT_FOUND)
+                .entity("User with id $id not found").build()
+
+        user.active = request.active
+        user.updatedAt = LocalDateTime.now()
+
+        userService.save(user)
+
+        return Response.ok(mapOf("message" to "User updated successfully")).build()
+    }
+
+
+
+    @POST
+    @Path("/users/upload")
+    @Consumes(MediaType.MULTIPART_FORM_DATA)
+    @Transactional
+    @RolesAllowed("admin")
+    fun uploadImage(@MultipartForm form: ImageUploadForm): Response {
+        println("Uploading ${form.userId}")
+        val user = userService.findById(form.userId!!)
+            ?: return Response.status(Response.Status.NOT_FOUND).entity("User not found").build()
+
+       // val bytes = form.file.readAllBytes()
+        val bytes = form.file.readBytes()
+        user.image = bytes
+        user.updatedAt = LocalDateTime.now()
+        userService.save(user)
+
+        return Response.ok("Image uploaded successfully").build()
+    }
+
+
+
+
+    @GET
+    @Path("/users/{id}/image")
+    fun getUserImage(@PathParam("id") id: Long): Response {
+        val user = userService.findById(id)
+            ?: return Response.status(Response.Status.NOT_FOUND).entity("User not found").build()
+
+        if (user.image == null) {
+            return Response.status(Response.Status.NO_CONTENT).build()
+        }
+
+        return Response.ok(ByteArrayInputStream(user.image))
+            .type("image/png") // ⚠️ assumes PNG; change if storing JPG etc.
+            .build()
+    }
+
+
+
+    class ImageUploadForm {
+        @FormParam("userId")
+        var userId: Long? = null
+
+        @FormParam("file")
+        @PartType(MediaType.APPLICATION_OCTET_STREAM)
+        lateinit var file: InputStream
+    }
+
+
+
+
+    @POST
+    @Path("/users/signature")
+    @Consumes(MediaType.MULTIPART_FORM_DATA)
+    @Transactional
+    @RolesAllowed("admin")
+    fun uploadSignature(@MultipartForm form: SignatureUploadRequest): Response {
+        println("Received userId=${form.userId}, signature=${form.signature != null}")
+        if (form.userId == null) {
+            println("User is null")
+            return Response.status(Response.Status.BAD_REQUEST)
+                .entity("Missing userId").build()
+        }
+
+
+        val user = userService.findById(form.userId!!)
+            ?: return Response.status(Response.Status.NOT_FOUND)
+                .entity("User not found").build()
+
+        val hasSignature =  userSignatureService.hasCurrentSignature(form.userId!!)
+        if(hasSignature){
+            val signature = userSignatureService.findByUserId(form.userId!!)
+            signature?.active = false
+            signature?.updatedAt = LocalDateTime.now()
+            userSignatureService.save(signature)
+
+
+        }
+        val bytes = form.signature?.readBytes()
+            ?: return Response.status(Response.Status.BAD_REQUEST)
+                .entity("Missing signature file").build()
+
+
+        val userSignature = UserSignature(
+            systemUser = user,
+            createdAt = LocalDateTime.now(),
+            active = true,
+            signature = bytes
+        )
+        userSignatureService.save(userSignature)
+
+        return Response.ok("Signature uploaded successfully").build()
+    }
+
+
+    class SignatureUploadRequest {
+        @FormParam("userId")
+        var userId: Long? = null
+
+        @FormParam("signature")
+        @PartType("application/octet-stream")
+        var signature: InputStream? = null
+    }
+
+
+    @GET
+    @Path("/users/{id}/signature")
+    @Produces("image/png")
+    fun getSignature(@PathParam("id") id: Long): Response {
+        val user = userService.findById(id) ?: throw NotFoundException("User not found")
+        val usersig = userSignatureService.findCurrentByUserId(id)
+        return if (usersig?.signature != null)
+            Response.ok(usersig.signature).build()
+        else
+            Response.status(Response.Status.NOT_FOUND).build()
     }
 
 

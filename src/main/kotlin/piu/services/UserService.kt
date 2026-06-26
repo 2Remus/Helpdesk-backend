@@ -13,31 +13,34 @@ class UserService {
     @Inject
     lateinit var userRepository: UserRepository
 
-    fun findAll(): List<SystemUser>{
-        return userRepository.listAll()
+   /* fun findAll(): List<SystemUser>{
+        return userRepository.listAll(Sort.ascending("name"))
+    }*/
+    fun findAll(): List<SystemUser> {
+        return userRepository.find("FROM SystemUser u LEFT JOIN FETCH u.institution").list()
     }
 
-    fun findById(id: Long): SystemUser?{
-        return userRepository.findById(id)
 
-    }
+ fun findById(id: Long?): SystemUser? {
+     return userRepository.find("FROM SystemUser u LEFT JOIN FETCH u.institution WHERE u.id = ?1", id)
+         .firstResult()
+ }
 
-    fun findByEmail(email: String): SystemUser?{
+    fun findByEmail(email: String?): SystemUser?{
         return userRepository.findByEmail(email)
     }
 
+    fun findByName(name: String?): SystemUser?{
+        return userRepository.findByName(name)
+    }
 
-   /* fun updateUser(systemUser: SystemUser){
-        userRepository.update(
-            "email = '${systemUser.email}'"+
-                    "where id = ${systemUser.id}"
-        )
 
-    }*/
-    fun updateUser(systemUser: SystemUser) {
+
+    fun updateUser(systemUser: SystemUser?) {
+        println("User updated: "+systemUser?.email)
         userRepository.update(
             "email = :email where id = :id",
-            Parameters.with("email", systemUser.email).and("id", systemUser.id)
+            Parameters.with("email", systemUser?.email).and("id", systemUser?.id)
         )
     }
 
@@ -51,8 +54,17 @@ class UserService {
         return userRepository.find("isAdmin = true and issueType=?1",type).firstResult<SystemUser>()
     }
 
+    fun findByActivationToken(token: String): SystemUser?{
+        return userRepository.find("activationToken=?1",token).firstResult<SystemUser>()
+    }
+
     fun save(user: SystemUser) {
         userRepository.persist(user)
+    }
+
+
+    fun findAvailableUsers(): List<SystemUser>{
+        return userRepository.findAvailableUsers()
     }
 
 

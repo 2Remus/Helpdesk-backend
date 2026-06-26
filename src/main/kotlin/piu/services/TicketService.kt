@@ -32,7 +32,13 @@ class TicketService {
         return ticketRepository.findByUserEmail(email)
     }
 
+    fun findByUserIssueType(issueType: String?): List<Ticket>{
+        return ticketRepository.findByUserIssueType(issueType)
+    }
 
+    fun findTicketsAssignedToUser(user: String?): List<Ticket>{
+        return ticketRepository.findTicketsAssignedToUser(user)
+    }
 
 
     fun saveTicket(ticket: Ticket){

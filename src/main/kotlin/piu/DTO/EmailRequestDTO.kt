@@ -1,4 +1,4 @@
-package piu.models
+package piu.DTO
 
 data class EmailRequestDTO(
     val to: String,

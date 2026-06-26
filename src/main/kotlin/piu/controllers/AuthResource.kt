@@ -9,16 +9,11 @@ import jakarta.ws.rs.Produces
 import jakarta.ws.rs.core.MediaType
 import jakarta.ws.rs.core.Response
 import org.piu.models.SystemUser
-import org.piu.repositories.UserRepository
 import piu.models.LoginRequest
 import piu.models.LoginResponse
 import piu.models.SystemUserDTO
 import java.security.MessageDigest
-import java.time.Duration
-import io.smallrye.jwt.build.Jwt
 import org.piu.services.UserService
-import java.nio.file.Files
-import java.nio.file.Paths
 import java.security.KeyFactory
 import java.security.interfaces.RSAPrivateKey
 import java.security.spec.PKCS8EncodedKeySpec
@@ -30,40 +25,55 @@ import com.nimbusds.jose.JWSHeader
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JOSEObjectType
 import com.nimbusds.jose.crypto.RSASSASigner
+import io.quarkus.mailer.Mailer
+import jakarta.annotation.security.PermitAll
+import jakarta.transaction.Transactional
+import jakarta.ws.rs.PathParam
+import piu.models.RegisterRequest
+import piu.services.EmailService
+import piu.services.UserRoleService
+import piu.services.UserRolesAssignedService
+import java.util.UUID
 
 @Path("/api")
 class AuthResource {
     @Inject
     lateinit var userService: UserService
 
+
+    @Inject
+    lateinit var emailService: EmailService
+
+    @Inject
+    lateinit var userRolesAssignedService: UserRolesAssignedService
+
+    @Inject
+    lateinit var userRoleService: UserRoleService
     @POST
     @Path("/login")
     @Produces(MediaType.APPLICATION_JSON)
     @Consumes(MediaType.APPLICATION_JSON)
     fun login(req: LoginRequest): Response {
-        println("Login request for: ${req.email}")
         val user = userService.findByEmail(req.email)
             ?: return Response.status(Response.Status.UNAUTHORIZED).entity("Invalid credentials").build()
-
-        //  val hashed = BcryptUtil.bcryptHash(req.password)
-        println("User"+user.email)
+        println("User trying to login: "+user.email)
+       if(!user.active){
+            return Response.status(Response.Status.UNAUTHORIZED).entity("Invalid credentials").build()
+        }
         return when {
             // Already using bcrypt
-
             user.hashedPassword?.startsWith("$2a$") == true || user.hashedPassword ?.startsWith("$2b$") == true -> {
                 if (!BcryptUtil.matches(req.password, user.hashedPassword)) {
-                    println("Req: "+req.email)
-                    println("Bcrypt password mismatch"+" "+user.hashedPassword)
+
                     Response.status(Response.Status.UNAUTHORIZED).entity("Invalid credentials").build()
                 } else {
-                    println("Bcrypt match")
+                    println("Success")
                     createJwtResponse(user)
                 }
             }
 
             // Fallback to SHA-256 check
             sha256(req.password) == user.hashedPassword -> {
-                println("SHA256 match. Migrating to bcrypt...")
                 // Re-hash with bcrypt and update the user
                 val newBcrypt = BcryptUtil.bcryptHash(req.password)
                 user.hashedPassword = newBcrypt
@@ -88,7 +98,8 @@ class AuthResource {
             issueType = user.issueType,
             name = user.name,
             password = "",
-            institutionId = 0
+            active = user.active,
+            institution = user.institution?.name,
         )
         return Response.ok(LoginResponse(token , userDTO)).build()
     }
@@ -118,6 +129,17 @@ class AuthResource {
         val now = Date()
         val expiry = Date(now.time + 1000 * 60 * 60 * 6) // 6 hours
 
+        val assignedRoles = userRolesAssignedService.findRolesByUserId(user.id)
+        val roleNames = assignedRoles.mapNotNull { it.userRole?.name?.lowercase() }
+        println("groups $roleNames")
+       // val permissions = assignedRoles.flatMap { it.userRole?.userPermissions!!.mapNotNull { p -> p.permission?.lowercase() } }
+        val permissions = assignedRoles.flatMap { it.userRole?.userRolePermissions!!.mapNotNull { p -> p.userPermission?.permission?.lowercase() } }
+        println("permissions $permissions")
+        val groups = mutableSetOf<String>()
+        groups.addAll(roleNames)
+        groups.addAll(permissions)
+        println("groups $groups")
+
         val claims = JWTClaimsSet.Builder()
             .issuer("cardtp")
             .subject(user.email)
@@ -126,7 +148,8 @@ class AuthResource {
             .claim("id", user.id)
             .claim("email", user.email)
             .claim("admin", user.admin)
-            .claim("groups", if (user.admin) listOf("admin") else listOf("user"))
+            .claim("groups", groups)
+            .claim("permissions", permissions)
             .build()
 
         val signer = RSASSASigner(loadPrivateKey())
@@ -140,6 +163,77 @@ class AuthResource {
 
         return signedJWT.serialize()
     }
+    @Inject
+    lateinit var mailer: Mailer
+
+    @POST
+    @Path("/register")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Transactional
+    fun register(req: RegisterRequest): Response {
+
+        val userExist = userService.findByEmail(req.email)
+        if (userExist != null) return Response.status(Response.Status.CONFLICT).entity("Email already exists").build()
+
+        val token = UUID.randomUUID().toString()
+        val hashedPassword = BcryptUtil.bcryptHash(req.password)
+        val user = SystemUser(
+            name = req.name,
+            email = req.email,
+            hashedPassword = hashedPassword,
+            activationToken = token,
+            active = false,
+            issueType = ""
+        )
+        userService.save(user)
+        val activationLink = "https://vswiftsupport.gov.vc/activate?token=$token"
+        try {
+
+            emailService.sendActivationEmail(
+                to = user.email,
+                name = user.name,
+                activationLink = activationLink
+            )
+
+        } catch (e: Exception) {
+            // Consider rolling back the user or allowing resend later
+           println("Failed to send activation mail to ${user.email}"+ e)
+            return Response.serverError().entity("Could not send activation email. Please try again.").build()
+        }
+
+        return Response.ok("Registration successful, check your email to activate your account.").build()
+    }
+
+
+
+
+    @POST
+    @Path("/activate/{token}")
+    @PermitAll
+    @Transactional
+    fun activateUser(@PathParam("token") token: String): Response {
+        println("activation started: $token")
+
+        val user = userService.findByActivationToken(token)
+        println("User to activate: ${user?.email}")
+        if (user == null) {
+            return Response.status(Response.Status.NOT_FOUND)
+                .entity("Invalid token")
+                .build()
+        }
+
+        user.active = true
+        user.activationToken = null
+        userService.updateUser(user)
+        //assign regular role upon activation
+        val userRole = userRoleService.findOrCreateUserRole()
+        userRolesAssignedService.assignRole(user.id,userRole.id)
+
+
+        return Response.ok("Account activated. You may now log in.").build()
+    }
+
+
 
 
 

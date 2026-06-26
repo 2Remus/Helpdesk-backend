@@ -1,0 +1,25 @@
+stages:
+  - deploy
+
+variables:
+  SSH_USER: "developer"
+  SSH_HOST: "10.181.1.65"
+  SSH_PORT: "22"
+
+
+# Stage: Deploy backend
+deploy_backend:
+  stage: deploy
+  tags:
+    - vswiftbackend
+
+  script:
+    - ssh -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "/usr/local/bin/deploy_backend.sh"
+
+  only:
+    - main
+
+
+
+
+
