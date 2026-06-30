@@ -1,11 +1,12 @@
 package piu.utils
 
-
+import kotlin.collections.mutableListOf
 import com.knuddels.jtokkit.Encodings
 import com.knuddels.jtokkit.api.Encoding
 import com.knuddels.jtokkit.api.EncodingRegistry
 import com.knuddels.jtokkit.api.EncodingType
 import com.knuddels.jtokkit.api.IntArrayList
+import java.util.PriorityQueue
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.math.pow
 import kotlin.math.sqrt
@@ -14,13 +15,14 @@ data class VectorRecord(
     val id: String,
     val text: String,
     val embedding: FloatArray,
-){
+) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (javaClass != other?.javaClass) return false
         other as VectorRecord
         return id == other.id
     }
+
     override fun hashCode(): Int = id.hashCode()
 }
 
@@ -42,14 +44,18 @@ class SemanticChunker(
 
     fun splitText(text: String): List<String> {
         val tokens: IntArrayList = encoder.encode(text)
-        val chunks: MutableList<String> = mutableListOf<String>()
-        var start: Int = 0
+        val chunks: MutableList<String> = mutableListOf()
+        var start = 0
 
         while (start < tokens.size()) {
-            val end: Int = minOf(start + chunkSize, tokens.size())
+            val end = minOf(start + chunkSize, tokens.size())
             val chunkTokens = IntArrayList(end - start)
 
-            // Decode back into a raw string slice
+
+            for (i in start until end) {
+                chunkTokens.add(tokens.get(i))
+            }
+
             chunks.add(encoder.decode(chunkTokens))
 
             if (end == tokens.size()) break
@@ -59,13 +65,13 @@ class SemanticChunker(
     }
 }
 
-
 class VectorIndex(private val dimensions: Int) {
     private val records = CopyOnWriteArrayList<VectorRecord>()
 
     fun insert(id: Long, text: String, embedding: FloatArray) {
-        debug_assert(embedding.size == dimensions) { "Vector dimension mismatch!" }
 
+        require(embedding.size == dimensions) { "Vector dimension mismatch!" }
+        records.add(VectorRecord(id.toString(), text, embedding))
     }
 
     private fun computeCosineSimilarity(v1: FloatArray, v2: FloatArray): Float {
@@ -86,126 +92,131 @@ class VectorIndex(private val dimensions: Int) {
     }
 
     private fun computeEuclideanDistance(v1: FloatArray, v2: FloatArray): Float {
-        var sum_of_squares = 0.0f
+        var sumOfSquares = 0.0f
         for (i in v1.indices) {
             val diff = v1[i] - v2[i]
-            val diff_sq = diff.pow(2)
-            sum_of_squares += diff_sq
-
+            sumOfSquares += diff.pow(2)
         }
-        val distance: Float = sqrt(sum_of_squares)
-        return distance
+        return sqrt(sumOfSquares)
     }
 
     private fun dotProduct(v1: FloatArray, v2: FloatArray): Float {
         require(v1.size == v2.size) { "Vector dimension mismatch!" }
-        var dotProduct: Float = 0.0f
+        var dotProd = 0.0f
         for (i in v1.indices) {
-            val product = v1[i] * v2[i]
-            dotProduct += product
+            dotProd += v1[i] * v2[i]
         }
-
-
-
-        return dotProduct
+        return dotProd
     }
 
-
-    //fix this pls
     fun search(queryVector: FloatArray, topK: Int): List<SearchResult> {
-        require(queryVector.size != dimensions) { "Query vector dimension mismatch!" }
+
+        require(queryVector.size == dimensions) { "Query vector dimension mismatch!" }
 
         return records.asSequence()
             .map { record ->
                 val score = computeCosineSimilarity(queryVector, record.embedding)
                 SearchResult(record, score)
             }
-            // Sort descending by similarity score
             .sortedByDescending { it.score }
             .take(topK)
             .toList()
     }
 
     data class TextNode(
-        var chunkid: String,
-        var embedding: DoubleArray,
+        var chunkId: String,
+        var embedding: FloatArray,
         var textContent: String,
         var g: Double = 0.0,
         var h: Double = 0.0,
-        val parent TextNode? = null
-    ): Comparable<TextNode> {
+        val parent: TextNode? = null
+    ) : Comparable<TextNode> {
         val f: Double get() = g + h
         override fun compareTo(other: TextNode): Int = this.f.compareTo(other.f)
     }
 
-    // A* implementation
-    fun aStarSearch(start: DoubleArray, goal: DoubleArray, vectorDbQuery: (DoubleArray) -> List<TextNode>): List<TextNode>{
-        val openSet = PriorityQueue<TextNode>()
-        val closedSet = mutableListOf<String>()
+    // Missing heuristic method logic wrapper
+    private fun computeHybridHeuristic(v1: FloatArray, v2: FloatArray, alpha: Double, beta: Double): Double {
+        val euclid = computeEuclideanDistance(v1, v2).toDouble()
+        val cosineDist = 1.0 - computeCosineSimilarity(v1, v2).toDouble()
+        return (alpha * euclid) + (beta * cosineDist)
+    }
 
+    fun aStartEuclidCos(
+        startEmbedding: FloatArray,
+        goalEmbedding: FloatArray,
+        vectorDbQuery: (FloatArray) -> List<TextNode>, //some function that takes float array
+        alpha: Double = 0.5,
+        beta: Double = 0.5
+    ): List<TextNode>? {
 
+        val openSet = PriorityQueue<TextNode>(Comparator.comparingDouble { it.f })
+        val closedSet = HashSet<String>()
+        val bestGInstance = HashMap<String, Double>()
 
-        val startnode = TextNode(
-            chunkid = "START"
-            embedding = start
-            textContent = "Initial Query"
+        val startNode = TextNode(
+            chunkId = "START",
+            embedding = startEmbedding,
+            textContent = "Initial Query",
             g = 0.0,
-            h = computeEuclideanDistance(start, goal)
+            h = computeHybridHeuristic(startEmbedding, goalEmbedding, alpha, beta)
         )
 
-        openSet.add(startnode)
+        openSet.add(startNode)
+        bestGInstance[startNode.chunkId] = 0.0
 
-        while (openSet.isNotEmpty){
+        while (openSet.isNotEmpty()) {
             val current = openSet.poll()
-            if (computeEuclideanDistance(current.embedding, goalEmbedding) < 0.25) {
-                       return reconstructPath(current)
+
+            if (computeEuclideanDistance(current.embedding, goalEmbedding) < 0.25f) {
+                return reconstructPath(current)
             }
 
             if (closedSet.contains(current.chunkId)) continue
             closedSet.add(current.chunkId)
 
-            val relateChunks = vectorDbQuery(current.embedding)
+            val relatedChunks = vectorDbQuery(current.embedding)
 
             for (neighbor in relatedChunks) {
-                if (closedSet.contains(neighbor.chunkId) continue
+                if (closedSet.contains(neighbor.chunkId)) continue
 
-                val setpCost = computeEuclideanDistance(current.embedding, neighbor.embedding)
-                val tentativeG = current.g + setpCost
+                val stepCost = computeEuclideanDistance(current.embedding, neighbor.embedding).toDouble()
+                val tentativeG = current.g + stepCost
 
-                val h = computeEuclideanDistance(neighbor.embedding, goalEmbedding)
+                if (tentativeG >= (bestGInstance[neighbor.chunkId] ?: Double.MAX_VALUE)) {
+                    continue
+                }
+
+                val hScore = computeHybridHeuristic(neighbor.embedding, goalEmbedding, alpha, beta)
 
                 neighbor.g = tentativeG
-                neighbor.h = h
+                neighbor.h = hScore
+
                 val updatedNeighbor = neighbor.copy(parent = current)
 
+                bestGInstance[neighbor.chunkId] = tentativeG
                 openSet.add(updatedNeighbor)
             }
-
         }
 
         return null
     }
 
-    //itterative method
-    private fun reconstructPath(node: TextNode?, list): List<TextNode>{
+    private fun reconstructPath(node: TextNode?): List<TextNode> {
         val path = mutableListOf<TextNode>()
         var current = node
-        while (current != null){
+        while (current != null) {
             path.add(0, current)
             current = current.parent
         }
-
         return path
     }
 
-
-    //recursiveMethod
-    private fun recurisivePath(node: TextNode?, list: MutableListOf<TextNode>): MutableListOf<TextNode>{
-
-        if (node == null){
-            return list
-        }
-        list.add(0, node)
-        return recurisivePath(node.parent, list)
-    }
+    // private fun recursivePath(node: TextNode?, list: MutableListOf<TextNode>): MutableListOf<TextNode> {
+    //     if (node == null) {
+    //         return list
+    //     }
+    //     list.add(0, node)
+    //     return recursivePath(node.parent, list)
+    // }
 }
