@@ -18,7 +18,7 @@ import org.piu.services.MessageService
 import org.piu.services.TicketService
 import org.piu.services.UserService
 import piu.models.MessageDTO
-import piu.models.MessageResponseDTO
+import piu.DTO.MessageResponseDTO
 import java.time.LocalDateTime
 
 @Path("/api")

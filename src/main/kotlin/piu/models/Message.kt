@@ -9,7 +9,7 @@ import jakarta.persistence.Id
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
-import piu.models.MessageResponseDTO
+import piu.DTO.MessageResponseDTO
 import java.time.LocalDateTime
 
 @Entity
