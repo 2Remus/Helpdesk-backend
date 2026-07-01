@@ -38,6 +38,7 @@ dependencies {
     implementation("io.ktor:ktor-client-cio:3.0.0") // CIO is a coroutine-based engine
     implementation("com.knuddels:jtokkit:1.1.0")
     implementation("com.pgvector:pgvector:0.1.4")
+    //implementation("io.quarkus:quarkus-rest-client-reactive-jackson")
 }
 
 group = "piu"

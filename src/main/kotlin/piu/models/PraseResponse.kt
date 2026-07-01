@@ -8,5 +8,5 @@ data class PraseResponse(
     var prompt: String,
     var stream: Boolean,
     var options: GenerationConfig,
-    var modelIp: ModelType
+    var modelip: String
 )

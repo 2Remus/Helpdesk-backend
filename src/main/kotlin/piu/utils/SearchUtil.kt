@@ -168,7 +168,7 @@ class VectorIndex(private val dimensions: Int) {
         while (openSet.isNotEmpty()) {
             val current = openSet.poll()
 
-            if (computeEuclideanDistance(current.embedding, goalEmbedding) < 0.25f) {
+            if (computeEuclideanDistance(current.embedding, goalEmbedding) < 0.05f) {
                 return reconstructPath(current)
             }
 
