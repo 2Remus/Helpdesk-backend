@@ -45,9 +45,9 @@ class VectorRepository {
 
     fun insertVectorRecord(chunkId: String, text: String, embedding: FloatArray) {
         val sql = """
-            INSERT INTO legal_chunks (chunk_id, text_content, embedding) 
-            VALUES (?, ?, ?) 
-            ON CONFLICT (chunk_id) 
+            INSERT INTO legal_chunks (chunk_id, text_content, embedding)
+            VALUES (?, ?, ?)
+            ON CONFLICT (chunk_id)
             DO UPDATE SET text_content = EXCLUDED.text_content, embedding = EXCLUDED.embedding
         """.trimIndent()
 

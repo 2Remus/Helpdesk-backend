@@ -2,11 +2,11 @@ package piu.models
 
 import kotlinx.serialization.Serializable
 
-@Serializable
+@Serializable //turns into json
 data class PraseResponse(
-    var model : String,
-    var prompt : String,
-    var stream : Boolean,
+    var model: String,
+    var prompt: String,
+    var stream: Boolean,
     var options: GenerationConfig,
     var modelIp: ModelType
 )

@@ -142,7 +142,7 @@ class VectorIndex(private val dimensions: Int) {
         return (alpha * euclid) + (beta * cosineDist)
     }
 
-    fun aStartEuclidCos(
+    fun aStarEuclidCos(
         startEmbedding: FloatArray,
         goalEmbedding: FloatArray,
         vectorDbQuery: (FloatArray) -> List<TextNode>, //some function that takes float array
