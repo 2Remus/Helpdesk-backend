@@ -15,7 +15,8 @@ class VectorRepository {
     @ConfigProperty(name = "vectordb.url")
     lateinit var databaseUrl: Optional<String>
 
-    private fun getConnection(): Connection {
+    // Core helper method to create a fresh connection when needed
+    fun createConnection(): Connection {
         val url = databaseUrl.orElseThrow {
             IllegalStateException("Database URL configuration 'vectordb.url' is missing!")
         }
@@ -24,56 +25,51 @@ class VectorRepository {
         return conn
     }
 
-    fun initDatabaseSchema() {
-        getConnection().use { conn ->
-            conn.createStatement().use { stmt ->
-                stmt.executeUpdate("CREATE EXTENSION IF NOT EXISTS vector")
+    // Accepts an optional connection parameter to prevent pooling exhaustions
+    fun findNodeById(id: String, externalConn: Connection? = null): VectorIndex.TextNode? {
+        val sql = "SELECT chunk_id, text_content, embedding FROM legal_chunks WHERE chunk_id = ?"
 
-                // Build a structured table for A* TextNodes
-                stmt.executeUpdate(
-                    """
-                    CREATE TABLE IF NOT EXISTS legal_chunks (
-                        chunk_id VARCHAR(255) PRIMARY KEY,
-                        text_content TEXT NOT NULL,
-                        embedding vector(768) NOT NULL
+        // If an external connection is provided, do NOT close it when done!
+        val stmt = (externalConn ?: createConnection()).prepareStatement(sql)
+
+        return stmt.use { pstmt ->
+            pstmt.setString(1, id)
+            pstmt.executeQuery().use { rs ->
+                if (rs.next()) {
+                    val vectorString = rs.getString("embedding").trim('[', ']')
+                    val floatArray = vectorString.split(",").map { it.trim().toFloat() }.toFloatArray()
+
+                    VectorIndex.TextNode(
+                        chunkId = rs.getString("chunk_id"),
+                        textContent = rs.getString("text_content"),
+                        embedding = floatArray
                     )
-                """.trimIndent()
-                )
+                } else null
             }
+        }.also {
+            // Only close the connection if we generated it locally inside this method
+            if (externalConn == null) stmt.connection.close()
         }
     }
 
-    fun insertVectorRecord(chunkId: String, text: String, embedding: FloatArray) {
+    // Accepts an optional connection parameter to stay stable within tight loops
+    fun queryNearestNeighbors(
+        queryVector: FloatArray,
+        limit: Int = 5,
+        externalConn: Connection? = null
+    ): List<VectorIndex.TextNode> {
         val sql = """
-            INSERT INTO legal_chunks (chunk_id, text_content, embedding)
-            VALUES (?, ?, ?)
-            ON CONFLICT (chunk_id)
-            DO UPDATE SET text_content = EXCLUDED.text_content, embedding = EXCLUDED.embedding
-        """.trimIndent()
-
-        getConnection().use { conn ->
-            conn.prepareStatement(sql).use { pstmt ->
-                pstmt.setString(1, chunkId)
-                pstmt.setString(2, text)
-                // Wrap the primitive FloatArray into pgvector's custom PGvector object
-                pstmt.setObject(3, PGvector(embedding))
-                pstmt.executeUpdate()
-            }
-        }
-    }
-
-    fun queryNearestNeighbors(queryVector: FloatArray, limit: Int = 5): List<VectorIndex.TextNode> {
-        val sql = """
-            SELECT chunk_id, text_content, embedding, (embedding <-> ?) as distance
+            SELECT chunk_id, text_content, embedding, (embedding <=> ?) as distance
             FROM legal_chunks
             ORDER BY distance ASC
             LIMIT ?
         """.trimIndent()
 
         val results = mutableListOf<VectorIndex.TextNode>()
+        val stmt = (externalConn ?: createConnection()).prepareStatement(sql)
 
-        getConnection().use { conn ->
-            conn.prepareStatement(sql).use { pstmt ->
+        try {
+            stmt.use { pstmt ->
                 pstmt.setObject(1, PGvector(queryVector))
                 pstmt.setInt(2, limit)
 
@@ -83,47 +79,76 @@ class VectorRepository {
                         val textContent = rs.getString("text_content")
                         val pgVectorObj = rs.getObject("embedding") as PGvector
 
-                        // Fixed parser logic with clean smart-casting
-                        fun parsePgVector(vectorStr: String?): FloatArray {
-                            val clean = vectorStr?.trim('[', ']')
-                            if (clean.isNullOrEmpty()) return floatArrayOf()
-
-                            // Counting elements by parsing commas
-                            var count = 1
-                            for (i in 0 until clean.length) {
-                                if (clean[i] == ',') count++
-                            }
-
-                            val result = FloatArray(count)
-                            var index = 0
-                            var start = 0
-
-                            for (i in 0 until clean.length) {
-                                if (clean[i] == ',') {
-                                    result[index++] = clean.substring(start, i).trim().toFloat()
-                                    start = i + 1
-                                }
-                            }
-                            result[index] = clean.substring(start).trim().toFloat()
-
-                            return result
+                        val floatArrayBytes = try {
+                            pgVectorObj.toArray()
+                        } catch (e: NoSuchMethodError) {
+                            fastParsePgVector(pgVectorObj.value)
                         }
-
-                        val floatArrayBytes = parsePgVector(pgVectorObj.value)
 
                         results.add(
                             VectorIndex.TextNode(
                                 chunkId = chunkId,
                                 embedding = floatArrayBytes,
-                                textContent = textContent,
-                                g = 0.0,
-                                h = 0.0
+                                textContent = textContent
                             )
                         )
                     }
                 }
             }
+        } finally {
+            // Only close the connection if we generated it locally inside this method
+            if (externalConn == null) stmt.connection.close()
         }
         return results
+    }
+
+    private fun fastParsePgVector(vectorStr: String?): FloatArray {
+        val clean = vectorStr?.trim('[', ']') ?: return floatArrayOf()
+        val tokens = clean.split(",")
+        val result = FloatArray(tokens.size)
+        for (i in tokens.indices) {
+            result[i] = tokens[i].trim().toFloat()
+        }
+        return result
+    }
+
+    fun initDatabaseSchema() {
+        createConnection().use { conn ->
+            conn.createStatement().use { stmt ->
+                stmt.executeUpdate("CREATE EXTENSION IF NOT EXISTS vector")
+                stmt.executeUpdate(
+                    """
+
+                    DROP TABLE legal_chunks;
+                    CREATE TABLE IF NOT EXISTS legal_chunks (
+                        chunk_id VARCHAR(255) PRIMARY KEY,
+                        text_content TEXT NOT NULL,
+                        embedding vector(1024) NOT NULL
+                    )
+                """.trimIndent()
+                )
+            }
+        }
+    }
+
+    fun insertVectorRecord(chunkId: String, text: String, embedding: FloatArray) {
+        val sql = """
+
+
+
+            INSERT INTO legal_chunks (chunk_id, text_content, embedding)
+            VALUES (?, ?, ?)
+            ON CONFLICT (chunk_id)
+            DO UPDATE SET text_content = EXCLUDED.text_content, embedding = EXCLUDED.embedding
+        """.trimIndent()
+
+        createConnection().use { conn ->
+            conn.prepareStatement(sql).use { pstmt ->
+                pstmt.setString(1, chunkId)
+                pstmt.setString(2, text)
+                pstmt.setObject(3, PGvector(embedding))
+                pstmt.executeUpdate()
+            }
+        }
     }
 }

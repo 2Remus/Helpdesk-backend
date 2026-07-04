@@ -34,10 +34,13 @@ dependencies {
     implementation("io.quarkus:quarkus-arc")
     testImplementation("io.quarkus:quarkus-junit5")
     testImplementation("io.rest-assured:rest-assured")
-    implementation("io.ktor:ktor-client-core:3.0.0")
     implementation("io.ktor:ktor-client-cio:3.0.0") // CIO is a coroutine-based engine
     implementation("com.knuddels:jtokkit:1.1.0")
     implementation("com.pgvector:pgvector:0.1.4")
+    implementation("io.ktor:ktor-serialization-kotlinx-json:3.0.0")
+    implementation("io.ktor:ktor-client-plugins:3.0.0")
+    implementation("io.ktor:ktor-client-content-negotiation:3.0.0")
+
     //implementation("io.quarkus:quarkus-rest-client-reactive-jackson")
 }
 

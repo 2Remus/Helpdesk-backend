@@ -10,14 +10,11 @@ import piu.models.ModelType
 class DataHandler {
     fun parseData(prompt: String, config: GenerationConfig, model: String, modelip: ModelType): JsonElement {
 
-        // Extract the actual IP/URL string property from the ModelType instance
         val endpointUrl = modelip.endpoint
-
-        // Pass the resolved string URL down into your response data structure
         val data: PraseResponse = PraseResponse(
             model = model,
             prompt = prompt,
-            stream = true,
+            stream = false,
             options = config,
             modelip = endpointUrl // Make sure PraseResponse expects a String here
         )

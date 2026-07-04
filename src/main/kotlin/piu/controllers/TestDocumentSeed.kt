@@ -9,6 +9,8 @@ import piu.models.ModelType
 import piu.utils.*
 import kotlin.math.sin
 import io.ktor.client.statement.bodyAsText
+import kotlinx.coroutines.runBlocking
+
 
 @Path("/api/search-test")
 @Produces(MediaType.APPLICATION_JSON)
@@ -18,23 +20,41 @@ class TestResource {
     @Inject
     lateinit var vectorRepository: VectorRepository
 
+    // --- Data Transfer Objects ---
+
     data class SearchTestRequest(
-        val sampleDocument: String, // Text to seed into the empty DB
+        val sampleDocument: String,
         val alpha: Double = 0.5,
         val beta: Double = 0.5
     )
 
+    data class PromptRequest(
+        val prompt: String,
+        val alpha: Double = 0.5,
+        val beta: Double = 0.5,
+        val limit: Int = 3
+    )
+
+
+    private fun generateDocumentHash(text: String): String {
+        val digest = java.security.MessageDigest.getInstance("SHA-256")
+        val hashBytes = digest.digest(text.toByteArray(Charsets.UTF_8))
+        return hashBytes.joinToString("") { "%02x".format(it) }.take(12) // Use a clean 12-char prefix
+    }
+
+    // --- Endpoint 1: Seed & Test ---
     @POST
     @Path("/run-with-seeding")
     fun runPipelineTest(request: SearchTestRequest): Response {
+        val embedder = LocalEmbeddingProvider()
         try {
-            // 1. Ensure schema exists
-            vectorRepository.initDatabaseSchema()
+            // Chunker handling
+            val chunker = SemanticChunker(chunkSize = 300, chunkOverlap = 40)
+            var chunks = chunker.splitText(request.sampleDocument)
 
-            // 2. Use your SemanticChunker to split the provided sample text
-            // Chunk size of 100 tokens, overlap of 20 tokens
-            val chunker = SemanticChunker(chunkSize = 100, chunkOverlap = 20)
-            val chunks = chunker.splitText(request.sampleDocument)
+            if (chunks.size <= 1 && request.sampleDocument.length > 1200) {
+                chunks = request.sampleDocument.chunked(1200)
+            }
 
             if (chunks.isEmpty()) {
                 return Response.status(Response.Status.BAD_REQUEST)
@@ -42,77 +62,125 @@ class TestResource {
                     .build()
             }
 
-            // 3. Seed chunks into the database with simulated embeddings
-            // We'll generate slightly different embeddings for each chunk so A* can traverse them
-            val chunkIds = mutableListOf<String>()
-            chunks.forEachIndexed { index, text ->
-                val chunkId = "chunk_$index"
-                chunkIds.add(chunkId)
+            // --- AUTOMATIC UNIQUE DOCUMENT SIGNATURE ---
+            val docSignature = generateDocumentHash(request.sampleDocument)
+            val insertedIds = mutableListOf<String>()
 
-                // Mocking a 768-dimension embedding that shifts progressively
-                val mockEmbedding = FloatArray(768) { i ->
-                    (sin((index + i).toDouble()) * 0.5 + 0.5).toFloat()
+            // 1. Batch execute ALL embeddings from Ollama at once to avoid loop latency
+            val allEmbeddings: List<FloatArray> = kotlinx.coroutines.runBlocking {
+                embedder.getEmbedding(chunks)
+            }
+
+            val connection = vectorRepository.createConnection()
+            try {
+                // 2. Safely cycle through the pre-computed embedding lists and save them
+                chunks.forEachIndexed { index, text ->
+                    val chunkId = "doc_${docSignature}_chunk_$index"
+                    insertedIds.add(chunkId)
+
+                    val emb = allEmbeddings[index]
+                    vectorRepository.insertVectorRecord(chunkId, text, emb)
                 }
-
-                vectorRepository.insertVectorRecord(chunkId, text, mockEmbedding)
-            }
-
-            // 4. Define Start and Goal states for A* using your 768 dimension rule
-            val vectorIndex = VectorIndex(dimensions = 768)
-
-            // Start close to the first chunk's pattern, Goal close to the last chunk's pattern
-            val startEmbedding = FloatArray(768) { i -> (sin((0 + i).toDouble()) * 0.5 + 0.5).toFloat() }
-            val goalEmbedding = FloatArray(768) { i -> (sin(((chunks.size - 1) + i).toDouble()) * 0.5 + 0.5).toFloat() }
-
-            // 5. Execute A* search drawing directly from the newly seeded database
-            val pathNodes = vectorIndex.aStarEuclidCos(
-                startEmbedding = startEmbedding,
-                goalEmbedding = goalEmbedding,
-                vectorDbQuery = { currentVector ->
-                    // Pulls nearest neighbor chunks from DB based on current vector state
-                    vectorRepository.queryNearestNeighbors(currentVector, limit = 3)
-                },
-                alpha = request.alpha,
-                beta = request.beta
-            )
-
-            if (pathNodes.isNullOrEmpty()) {
-                return Response.ok(
-                    mapOf(
-                        "message" to "Data seeded successfully, but no complete A* path could connect start to goal.",
-                        "seededChunksCount" to chunks.size
-                    )
-                ).build()
-            }
-
-            // 6. Aggregate path context and format for LLM pipeline simulation
-            val aggregatedContext = pathNodes.joinToString("\n") { it.textContent }
-            val dataHandler = DataHandler()
-
-            // Inside your endpoint resource...
-            val targetModelType = ModelType.CUSTOMS
-            val payload = dataHandler.parseData(
-                prompt = "Context:\n$aggregatedContext\n\nQuestion: who performs audits",
-                config = GenerationConfig(),
-                model = "llama3.2:1b",
-                modelip = targetModelType
-            )
-
-            val ollamaHandler = OllamaHandler()
-            val responseText = kotlinx.coroutines.runBlocking {
-                val ioResponse = ollamaHandler.generateResponse(payload)
-                ioResponse?.bodyAsText() ?: "Failed to get response from Ollama"
+            } finally {
+                connection.close()
             }
 
             return Response.ok(
                 mapOf(
                     "status" to "Success",
-                    "chunksSeeded" to chunks.size,
-                    "stepsTraversed" to pathNodes.size,
-                    "path" to pathNodes.map { mapOf("id" to it.chunkId, "text" to it.textContent) },
-                    "llmReply" to responseText
+                    "message" to "Database successfully seeded via batch operation.",
+                    "chunksSeededCount" to chunks.size,
+                    "generatedIds" to insertedIds
                 )
             ).build()
+
+        } catch (e: Exception) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                .entity(mapOf("error" to e.message, "stack" to e.stackTraceToString()))
+                .build()
+        }
+    }
+
+
+    @POST
+    @Path("/process-prompt")
+    suspend fun processPrompt(request: PromptRequest): Response {
+        try {
+            val vectorIndex = VectorIndex(dimensions = 1024)
+            val embedder = LocalEmbeddingProvider()
+            val promptText = request.prompt
+            val newText = kotlinx.coroutines.runBlocking {
+                vectorIndex.decomposeQuery(promptText)
+            }
+
+            // FIX 1: Change to getEmbeddings to match the List<String> input type from decomposition
+            val queryEmbeddings: List<FloatArray> = kotlinx.coroutines.runBlocking {
+                embedder.getEmbedding(newText)
+            }
+
+            vectorRepository.createConnection().use { sharedConnection ->
+                // FIX 2: Iterating over queryEmbeddings cleanly maps each search vector
+                val baseScan = queryEmbeddings.flatMap { individualEmbedding ->
+                    vectorRepository.queryNearestNeighbors(
+                        individualEmbedding,
+                        limit = request.limit,
+                        externalConn = sharedConnection
+                    )
+                }
+
+                if (baseScan.isEmpty()) {
+                    return Response.status(Response.Status.NOT_FOUND)
+                        .entity(mapOf("message" to "No context found in vector database."))
+                        .build()
+                }
+
+                // 2. Unify, cross-reference, and deduplicate nodes matching all sub-topics
+                val finalNodes = baseScan.distinctBy { it.chunkId }
+
+                // 3. Stitch multiple dense matching chunks together for the LLM context window
+                val aggregatedContext = finalNodes
+                    .take(5)
+                    .joinToString("\n\n") { "--- Context (${it.chunkId}) ---\n${it.textContent.trim()}" }
+
+                // 4. Send the combined multi-document context straight to your Ollama handler
+                val dataHandler = DataHandler()
+                val targetModelType = ModelType.CUSTOMS
+
+                val payload = dataHandler.parseData(
+                    prompt = """
+                        You are a precise assistant answering questions based strictly on the provided context.
+
+                        [Context Start]
+                        $aggregatedContext
+                        [Context End]
+
+                        Instructions:
+                        1. Answer the question using ONLY the factual information provided in the context above.
+                        2. If the context does not contain the answer, reply with: "I cannot find the answer in the provided documents."
+                        3. Provide a clear, detailed multi-sentence response.
+
+                        Question: ${request.prompt}
+                        Answer:
+                        """.trimIndent(),
+                    config = GenerationConfig(),
+                    model = "llama3.2:1b",
+                    modelip = targetModelType
+                )
+
+                val ollamaHandler = OllamaHandler()
+                val responseText = runBlocking {
+                    val ioResponse = ollamaHandler.generateResponse(payload)
+                    ioResponse?.bodyAsText() ?: "Failed to get response from Ollama"
+                }
+
+                return Response.ok(
+                    mapOf(
+                        "status" to "Success",
+                        "retrievedContext" to finalNodes.map { mapOf("id" to it.chunkId, "text" to it.textContent) },
+                        "llmReply" to responseText
+                    )
+                ).build()
+            }
 
         } catch (e: Exception) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)

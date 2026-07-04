@@ -1,5 +1,6 @@
 package piu.utils
 
+import io.quarkus.runtime.Quarkus
 import kotlin.collections.mutableListOf
 import com.knuddels.jtokkit.Encodings
 import com.knuddels.jtokkit.api.Encoding
@@ -10,6 +11,13 @@ import java.util.PriorityQueue
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.math.pow
 import kotlin.math.sqrt
+import io.quarkus.logging.Log
+import piu.models.ModelType
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.decodeFromString
+import io.ktor.client.statement.*
+import kotlinx.coroutines.runBlocking
+import piu.models.GenerationConfig
 
 data class VectorRecord(
     val id: String,
@@ -133,7 +141,9 @@ class VectorIndex(private val dimensions: Int) {
     ) : Comparable<TextNode> {
         val f: Double get() = g + h
         override fun compareTo(other: TextNode): Int = this.f.compareTo(other.f)
+
     }
+
 
     // Missing heuristic method logic wrapper
     private fun computeHybridHeuristic(v1: FloatArray, v2: FloatArray, alpha: Double, beta: Double): Double {
@@ -142,71 +152,206 @@ class VectorIndex(private val dimensions: Int) {
         return (alpha * euclid) + (beta * cosineDist)
     }
 
+    // fun aStarEuclidCos(
+    //     startEmbedding: FloatArray,
+    //     goalEmbedding: FloatArray,
+    //     vectorDbQuery: (FloatArray) -> List<TextNode>, //some function that takes float array
+    //     alpha: Double = 0.5,
+    //     beta: Double = 0.5
+    // ): List<TextNode>? {
+
+    //     val openSet = PriorityQueue<TextNode>(Comparator.comparingDouble { it.f })
+    //     val closedSet = HashSet<String>()
+    //     val bestGInstance = HashMap<String, Double>()
+
+    //     val startNode = TextNode(
+    //         chunkId = "START",
+    //         embedding = startEmbedding,
+    //         textContent = "Initial Query",
+    //         g = 0.0,
+    //         h = computeHybridHeuristic(startEmbedding, goalEmbedding, alpha, beta)
+    //     )
+
+    //     openSet.add(startNode)
+    //     bestGInstance[startNode.chunkId] = 0.0
+
+    //     while (openSet.isNotEmpty()) {
+    //         val current = openSet.poll()
+
+    //         if (computeEuclideanDistance(current.embedding, goalEmbedding) < 0.25f) {
+    //             return reconstructPath(current)
+    //         }
+
+    //         if (closedSet.contains(current.chunkId)) continue
+    //         closedSet.add(current.chunkId)
+
+    //         val relatedChunks = vectorDbQuery(current.embedding)
+
+
+    //         for (neighbor in relatedChunks) {
+    //             if (closedSet.contains(neighbor.chunkId)) continue
+
+    //             val neighborToGoalSimilarity = computeCosineSimilarity(neighbor.embedding, goalEmbedding)
+
+    //             if (neighborToGoalSimilarity < 0.4f) {
+    //                 continue
+    //             }
+
+    //             //val stepCost = computeEuclideanDistance(current.embedding, neighbor.embedding).toDouble()
+    //             val stepCost = computeHybridHeuristic(current.embedding, neighbor.embedding, alpha, beta)
+    //             val tentativeG = current.g + stepCost
+
+    //             if (tentativeG >= (bestGInstance[neighbor.chunkId] ?: Double.MAX_VALUE)) {
+    //                 continue
+    //             }
+
+    //             val hScore = computeHybridHeuristic(neighbor.embedding, goalEmbedding, alpha, beta)
+
+    //             neighbor.g = tentativeG
+    //             neighbor.h = hScore
+
+    //             val updatedNeighbor = neighbor.copy(parent = current)
+
+    //             bestGInstance[neighbor.chunkId] = tentativeG
+    //             openSet.add(updatedNeighbor)
+    //         }
+    //     }
+
+    //     return null
+    // }
+    //
+    //
+    //
+    //
+
+    suspend fun decomposeQuery(userPrompt: String): List<String> {
+        val systemPrompt = """
+            You are a search query planner. Break down the user's input into 1 to 3 simple, distinct keyword search targets.
+            Output ONLY a raw JSON array of strings. Do not include markdown blocks, text formatting, or explanations.
+
+            Example Input: Compare Macbeth and Napoleon the pig
+            Example Output: ["Macbeth", "Napoleon the pig"]
+        """.trimIndent()
+
+        try {
+            val dataHandler = DataHandler()
+            val ollamaHandler = OllamaHandler()
+            val targetModelType = ModelType.CUSTOMS // Match your Main IP config slot
+
+            // 1. Package the strict parsing payload using your DataHandler template match
+            val payload = dataHandler.parseData(
+                prompt = "$systemPrompt\n\nInput: $userPrompt\nOutput:",
+                config = GenerationConfig(
+                    temp = 0.0f // Lock temperature to 0.0 for rigid deterministic JSON shapes
+                ),
+                model = "llama3.2:1b",
+                modelip = targetModelType
+            )
+
+            // 2. Fire the raw request out through your Ktor wrapper
+            val ioResponse = ollamaHandler.generateResponse(payload)
+            val rawJson = ioResponse?.bodyAsText() ?: ""
+
+            // 3. Strip away unwanted Markdown fences that 1b models sneak in
+            val cleanedResponse = rawJson
+                .trim()
+                .removePrefix("```json")
+                .removePrefix("```")
+                .removeSuffix("```")
+                .trim()
+
+            return Json.decodeFromString<List<String>>(cleanedResponse)
+        } catch (e: Exception) {
+            println("⚠️ Query Decomposition failed parsing JSON. Falling back to raw prompt. Error: ${e.message}")
+            return listOf(userPrompt)
+        }
+    }
+
     fun aStarEuclidCos(
         startEmbedding: FloatArray,
         goalEmbedding: FloatArray,
-        vectorDbQuery: (FloatArray) -> List<TextNode>, //some function that takes float array
+        vectorDbQuery: (FloatArray) -> List<TextNode>,
+        fetchNodeById: ((String) -> TextNode?)? = null,
         alpha: Double = 0.5,
         beta: Double = 0.5
     ): List<TextNode>? {
 
-        val openSet = PriorityQueue<TextNode>(Comparator.comparingDouble { it.f })
-        val closedSet = HashSet<String>()
-        val bestGInstance = HashMap<String, Double>()
+        val openSet = PriorityQueue<TextNode>(128, Comparator.comparingDouble { it.f })
+        val closedSet = HashSet<String>(256)
+        val bestGInstance = HashMap<String, Double>(256)
 
-        val startNode = TextNode(
-            chunkId = "START",
-            embedding = startEmbedding,
-            textContent = "Initial Query",
-            g = 0.0,
-            h = computeHybridHeuristic(startEmbedding, goalEmbedding, alpha, beta)
-        )
+        var bestTargetNode: TextNode? = null
 
-        openSet.add(startNode)
-        bestGInstance[startNode.chunkId] = 0.0
+        val initialSeeds = vectorDbQuery(startEmbedding)
+        for (seed in initialSeeds) {
+            val hScore = computeHybridHeuristic(seed.embedding, goalEmbedding, alpha, beta)
+            val seedNode = seed.copy(g = 0.0, h = hScore)
+            openSet.add(seedNode)
+            bestGInstance[seed.chunkId] = 0.0
+
+            if (bestTargetNode == null || hScore < bestTargetNode.h) {
+                bestTargetNode = seedNode
+            }
+        }
 
         while (openSet.isNotEmpty()) {
             val current = openSet.poll()
+            if (current.g > (bestGInstance[current.chunkId] ?: Double.MAX_VALUE)) continue
 
-            if (computeEuclideanDistance(current.embedding, goalEmbedding) < 0.05f) {
-                return reconstructPath(current)
+            if (bestTargetNode == null || current.h < bestTargetNode.h) {
+                bestTargetNode = current
             }
+            if (!closedSet.add(current.chunkId)) continue
 
-            if (closedSet.contains(current.chunkId)) continue
-            closedSet.add(current.chunkId)
+            val relatedChunks = ArrayList<TextNode>(2)
+            if (fetchNodeById != null && current.chunkId.startsWith("chunk_")) {
+                val currentIdNum = current.chunkId.substring(6).toIntOrNull()
 
-            val relatedChunks = vectorDbQuery(current.embedding)
+                if (currentIdNum != null) {
+                    val nextId = "chunk_${currentIdNum + 1}"
+                    val prevId = "chunk_${currentIdNum - 1}"
+
+                    if (!closedSet.contains(nextId)) {
+                        fetchNodeById(nextId)?.let { relatedChunks.add(it) }
+                    }
+
+                    if (!closedSet.contains(prevId)) {
+                        fetchNodeById(prevId)?.let { relatedChunks.add(it) }
+                    }
+                }
+            }
 
             for (neighbor in relatedChunks) {
                 if (closedSet.contains(neighbor.chunkId)) continue
-
-                val stepCost = computeEuclideanDistance(current.embedding, neighbor.embedding).toDouble()
+                val similarity = dotProduct(current.embedding, neighbor.embedding)
+                val baseStepCost = 1.0 - similarity
+                val depthFactor = 1.0 + (current.g * 0.40)
+                val stepCost = (baseStepCost + 0.15) * depthFactor
                 val tentativeG = current.g + stepCost
 
-                if (tentativeG >= (bestGInstance[neighbor.chunkId] ?: Double.MAX_VALUE)) {
-                    continue
-                }
+                val currentBestG = bestGInstance[neighbor.chunkId] ?: Double.MAX_VALUE
+                if (tentativeG >= currentBestG) continue
 
                 val hScore = computeHybridHeuristic(neighbor.embedding, goalEmbedding, alpha, beta)
 
-                neighbor.g = tentativeG
-                neighbor.h = hScore
-
-                val updatedNeighbor = neighbor.copy(parent = current)
+                val updatedNeighbor = neighbor.copy(
+                    parent = current,
+                    g = tentativeG,
+                    h = hScore
+                )
 
                 bestGInstance[neighbor.chunkId] = tentativeG
                 openSet.add(updatedNeighbor)
             }
         }
-
-        return null
+        return bestTargetNode?.let { reconstructPath(it) }
     }
 
-    private fun reconstructPath(node: TextNode?): List<TextNode> {
+    fun reconstructPath(node: TextNode): List<TextNode> {
         val path = mutableListOf<TextNode>()
-        var current = node
+        var current: TextNode? = node
         while (current != null) {
-            path.add(0, current)
+            path.add(0, current) // Add to the front to maintain chronological order
             current = current.parent
         }
         return path
