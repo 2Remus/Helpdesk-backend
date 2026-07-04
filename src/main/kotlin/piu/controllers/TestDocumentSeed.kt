@@ -48,8 +48,9 @@ class TestResource {
     fun runPipelineTest(request: SearchTestRequest): Response {
         val embedder = LocalEmbeddingProvider()
         try {
+            //vectorRepository.initDatabaseSchema()
             // Chunker handling
-            val chunker = SemanticChunker(chunkSize = 300, chunkOverlap = 40)
+            val chunker = SemanticChunker(chunkSize = 100, chunkOverlap = 30)
             var chunks = chunker.splitText(request.sampleDocument)
 
             if (chunks.size <= 1 && request.sampleDocument.length > 1200) {

@@ -14,7 +14,7 @@ class DataHandler {
         val data: PraseResponse = PraseResponse(
             model = model,
             prompt = prompt,
-            stream = false,
+            stream = true,
             options = config,
             modelip = endpointUrl // Make sure PraseResponse expects a String here
         )
