@@ -114,13 +114,12 @@ class TestResource {
                 vectorIndex.decomposeQuery(promptText)
             }
 
-            // FIX 1: Change to getEmbeddings to match the List<String> input type from decomposition
             val queryEmbeddings: List<FloatArray> = kotlinx.coroutines.runBlocking {
                 embedder.getEmbedding(newText)
             }
 
             vectorRepository.createConnection().use { sharedConnection ->
-                // FIX 2: Iterating over queryEmbeddings cleanly maps each search vector
+
                 val baseScan = queryEmbeddings.flatMap { individualEmbedding ->
                     vectorRepository.queryNearestNeighbors(
                         individualEmbedding,
@@ -135,15 +134,15 @@ class TestResource {
                         .build()
                 }
 
-                // 2. Unify, cross-reference, and deduplicate nodes matching all sub-topics
+
                 val finalNodes = baseScan.distinctBy { it.chunkId }
 
-                // 3. Stitch multiple dense matching chunks together for the LLM context window
+
                 val aggregatedContext = finalNodes
                     .take(5)
                     .joinToString("\n\n") { "--- Context (${it.chunkId}) ---\n${it.textContent.trim()}" }
 
-                // 4. Send the combined multi-document context straight to your Ollama handler
+
                 val dataHandler = DataHandler()
                 val targetModelType = ModelType.CUSTOMS
 
@@ -164,7 +163,7 @@ class TestResource {
                         Answer:
                         """.trimIndent(),
                     config = GenerationConfig(),
-                    model = "llama3.2:1b",
+                    model = "llama3.2:1b-instruct-q3_K_M",
                     modelip = targetModelType
                 )
 

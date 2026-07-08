@@ -14,9 +14,9 @@ class DataHandler {
         val data: PraseResponse = PraseResponse(
             model = model,
             prompt = prompt,
-            stream = true,
+            stream = false,
             options = config,
-            modelip = endpointUrl // Make sure PraseResponse expects a String here
+            modelip = endpointUrl
         )
 
         val json = Json { ignoreUnknownKeys = true }
